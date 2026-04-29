@@ -80,7 +80,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("BYPASS IDE v0.1")
-        self.resize(1400, 900)
+        self.resize(1000, 600)
         self.current_file = None
 
         self.create_toolbar()

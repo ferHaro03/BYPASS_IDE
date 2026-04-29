@@ -14,21 +14,45 @@ class LexerBYPASS:
     def __init__(self, source_code):
         self.source_code = source_code
         self.tokens = []
-        self.errors = [] # Nueva lista para recolectar errores sin detenerse
+        self.errors = []
         self.line = 1
         self.line_start = 0
-        self.KEYWORDS = ['function', 'return', 'for', 'in']
+        
+        # Diccionario de Palabras Reservadas
+        self.KEYWORDS = {
+            'function': 'T_FUNCTION',
+            'return':   'T_RETURN',
+            'for':      'T_FOR',
+            'in':       'T_IN',
+            'if':       'T_IF',    # Añadimos soporte futuro para lógica
+            'else':     'T_ELSE',
+            'INPUT':    'T_INPUT', # Puertos reservados
+            'OUTPUT':   'T_OUTPUT'
+        }
 
     def tokenize(self):
         rules = [
-            ('T_COMMENT',   r'#.*'),                   
-            ('T_ARROW',     r'->'),                    
-            ('T_NUMBER',    r'\d+(\.\d+)?(hz|ms|bpm)?'),
-            ('T_STRING',    r'"[^"]*"'),               
-            ('T_ID',        r'[a-zA-Z_][a-zA-Z0-9_]*'), # Sin la ñ
-            ('T_NEWLINE',   r'\n'),                    
-            ('T_SKIP',      r'[ \t]+'),                
+            ('T_COMMENT',   r'#.*'),
+            ('T_ARROW',     r'->'),          # Prioridad sobre T_MINUS
+            ('T_NUMBER',    r'\d+(\.\d+)?(hz|ms|bpm|db)?'), # Añadido 'db'
+            ('T_STRING',    r'"[^"]*"'),
+            ('T_ID',        r'[a-zA-Z_][a-zA-Z0-9_]*'),
+            ('T_NEWLINE',   r'\n'),
+            ('T_SKIP',      r'[ \t]+'),
+            
+            # Operadores Comparación
+            ('T_EE',        r'=='),
+            ('T_GT',        r'>'),
+            ('T_LT',        r'<'),
+            
+            # Operadores Matemáticos y Asignación
             ('T_ASSIGN',    r'='),
+            ('T_PLUS',      r'\+'),
+            ('T_MINUS',     r'-'),
+            ('T_MUL',       r'\*'),
+            ('T_DIV',       r'/'),
+            
+            # Delimitadores
             ('T_COLON',     r':'),
             ('T_LPAREN',    r'\('),
             ('T_RPAREN',    r'\)'),
@@ -51,18 +75,20 @@ class LexerBYPASS:
             if kind == 'T_NEWLINE':
                 self.line_start = mo.end()
                 self.line += 1
+                # Podríamos emitir un token T_NEWLINE si el parser lo requiere
+                continue
             elif kind == 'T_SKIP' or kind == 'T_COMMENT':
                 continue
             elif kind == 'T_ID':
+                # Lógica de clasificación mejorada
                 if value in self.KEYWORDS:
-                    kind = f'T_{value.upper()}'
+                    kind = self.KEYWORDS[value]
                 elif value[0].isupper():
                     kind = 'T_MODULE_ID'
                 else:
                     kind = 'T_VAR_ID'
                 self.tokens.append(Token(kind, value, self.line, column))
             elif kind == 'T_MISMATCH':
-                # En lugar de raise, guardamos el error y seguimos
                 err_msg = f"Error Léxico: Carácter ilegal '{value}' en línea {self.line}, col {column}"
                 self.errors.append(err_msg)
                 self.tokens.append(Token('T_ERROR', value, self.line, column))
