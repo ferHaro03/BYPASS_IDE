@@ -219,9 +219,14 @@ class MainWindow(QMainWindow):
         for t in tokens: self.token_list.addItem(str(t))
         for err in errores: self.error_console.addItem(err)
 
-        # Parser dinámico
+        # --- FASE 2: PARSER ---
         if self.parser_act.isChecked():
-            self.ast_view.addItem("Parser: Analizando...")
+            from core.parser import ParserBYPASS
+            parser = ParserBYPASS(tokens)
+            ast_result = parser.parse()
+            
+            self.ast_view.addItem("AST GENERADO:")
+            self.ast_view.addItem(str(ast_result))
         else:
             self.ast_view.addItem("Parser: [DESACTIVADO]")
 

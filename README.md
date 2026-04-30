@@ -16,7 +16,7 @@ BYPASS es un entorno de desarrollo integrado diseñado para que músicos y produ
 ## 🚀 Instalación y Uso
 1. Clona el repositorio:
    ```bash
-   git clone [https://github.com/tu-usuario/BYPASS_IDE.git](https://github.com/tu-usuario/BYPASS_IDE.git)
+   git clone [https://github.com/ferHaro03/BYPASS_IDE.git](https://github.com/ferHaro03/BYPASS_IDE.git)
 
 2. Instala las dependencias:
    ```bash
@@ -25,17 +25,11 @@ BYPASS es un entorno de desarrollo integrado diseñado para que músicos y produ
 3. Ejecuta el IDE:
    ```bash
    python main.py
-
-## 📖 Gramática del Lenguaje (Avance)
-BYPASS utiliza una sintaxis basada en el flujo de señal:
-
-- **Módulos:** Empiezan con Mayúscula (Delay, Fuzz).
-- **Variables:** Empiezan con minúscula (señal, mezcla).
-- **Ruteo:** Operador -> para conectar módulos.
   
 ## 📚 Documentación
 Para entender a fondo el funcionamiento del lenguaje, consulta:
 * [Análisis Léxico y Tokens](./docs/lexical_analysis.md)
 * [Arquitectura del Sistema](./docs/architecture.md)
+* [Manual de Usuario](./docs/user_manual.md)
 
 
