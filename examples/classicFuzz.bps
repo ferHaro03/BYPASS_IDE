@@ -1,0 +1,15 @@
+# BYPASS - Emulación de Fuzz de Silicio
+# Sonido clásico de los 70s
+
+function ClassicFuzz(señal) {
+    # Definimos el carácter del pedal
+    caracter = "vintage"
+    
+    distorsion_roja = Fuzz(gain: 0.85, style: caracter)
+    filtro_tono = Filter(type: "BP", cutoff: 2500hz, q: 1.2)
+    
+    return señal -> distorsion_roja -> filtro_tono
+}
+
+# Procesamiento directo
+INPUT -> ClassicFuzz -> Gain(volume: 0.9) -> OUTPUT

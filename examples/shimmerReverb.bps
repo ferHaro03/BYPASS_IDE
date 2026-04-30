@@ -1,0 +1,18 @@
+# BYPASS - Algoritmo de Reverb Espacial
+# Diseñado para ambientes psicodélicos
+
+function ShimmerReverb(entrada, brillo) {
+    # Creamos una cadena de efectos en serie
+    difusion = Filter(type: "LP", cutoff: 12000hz)
+    reflexion = Delay(time: 80ms, feedback: 0.6)
+    
+    # Ruteo de señal usando el operador de cable
+    return entrada -> difusion -> reflexion -> Gain(brillo)
+}
+
+# Configuración principal
+señal_limpia = INPUT
+ambiente = señal_limpia -> ShimmerReverb(brillo: 0.75)
+
+# Mezcla final enviada al DAW
+[señal_limpia, ambiente] -> Mixer(out: "stereo") -> OUTPUT

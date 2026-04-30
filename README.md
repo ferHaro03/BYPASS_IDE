@@ -32,4 +32,10 @@ BYPASS utiliza una sintaxis basada en el flujo de señal:
 - **Módulos:** Empiezan con Mayúscula (Delay, Fuzz).
 - **Variables:** Empiezan con minúscula (señal, mezcla).
 - **Ruteo:** Operador -> para conectar módulos.
+  
+## 📚 Documentación
+Para entender a fondo el funcionamiento del lenguaje, consulta:
+* [Análisis Léxico y Tokens](./docs/lexical_analysis.md)
+* [Arquitectura del Sistema](./docs/architecture.md)
+
 
