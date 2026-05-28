@@ -161,6 +161,7 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(self.main_v_splitter)
         self.apply_styles()
+        self.statusBar().showMessage("BYPASS IDE Iniciado - Listo para codificar.")
 
     def create_toolbar(self):
         toolbar = QToolBar("Main Toolbar")
@@ -227,6 +228,10 @@ class MainWindow(QMainWindow):
             
             self.ast_view.addItem("AST GENERADO:")
             self.ast_view.addItem(str(ast_result))
+            
+            # --- NUEVO: Imprimir errores sintácticos en la consola inferior ---
+            for err in parser.errors:
+                self.error_console.addItem(err)
         else:
             self.ast_view.addItem("Parser: [DESACTIVADO]")
 
@@ -241,20 +246,54 @@ class MainWindow(QMainWindow):
         path = self.file_model.filePath(index)
         if os.path.isfile(path): self.load_file(path)
 
+# Métodos de Soporte
+    def open_file_from_tree(self, index):
+        path = self.file_model.filePath(index)
+        if os.path.isfile(path): self.load_file(path)
+
     def load_file(self, path):
         try:
             with open(path, 'r', encoding='utf-8') as f:
                 self.code_editor.setPlainText(f.read())
             self.current_file = path
-            self.setWindowTitle(f"BYPASS IDE v0.1 - {os.path.basename(path)}")
-        except Exception as e: self.error_console.addItem(str(e))
+            nombre_archivo = os.path.basename(path)
+            self.setWindowTitle(f"BYPASS IDE v0.1 - {nombre_archivo}")
+            
+            # --- FEEDBACK VISUAL ---
+            self.statusBar().showMessage(f"Archivo cargado: {nombre_archivo}", 3000) # 3000ms = 3 segundos
+            self.error_console.addItem(f"📁 [INFO] Archivo cargado exitosamente: {path}")
+            
+        except Exception as e: 
+            self.error_console.addItem(f"❌ [ERROR] Fallo al cargar: {str(e)}")
 
     def new_file(self):
         self.code_editor.clear()
         self.current_file = None
         self.setWindowTitle("BYPASS IDE v0.1 - Nuevo")
+        
+        # --- FEEDBACK VISUAL ---
+        self.statusBar().showMessage("Nuevo archivo creado.", 3000)
+        self.error_console.addItem("✨ [INFO] Nuevo proyecto inicializado.")
 
     def save_file(self):
+        if not self.current_file:
+            path, _ = QFileDialog.getSaveFileName(self, "Guardar", "", "BYPASS (*.bps)")
+            if not path: return
+            self.current_file = path
+        try:
+            with open(self.current_file, 'w', encoding='utf-8') as f:
+                f.write(self.code_editor.toPlainText())
+            
+            # Actualizamos el título por si es la primera vez que se guarda ("Guardar como...")
+            nombre_archivo = os.path.basename(self.current_file)
+            self.setWindowTitle(f"BYPASS IDE v0.1 - {nombre_archivo}")
+            
+            # --- FEEDBACK VISUAL ---
+            self.statusBar().showMessage(f"Guardado: {nombre_archivo}", 3000)
+            self.error_console.addItem(f"💾 [INFO] Proyecto guardado: {self.current_file}")
+            
+        except Exception as e: 
+            self.error_console.addItem(f"❌ [ERROR] Fallo al guardar: {str(e)}")
         if not self.current_file:
             path, _ = QFileDialog.getSaveFileName(self, "Guardar", "", "BYPASS (*.bps)")
             if not path: return

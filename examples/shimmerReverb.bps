@@ -7,12 +7,12 @@ function ShimmerReverb(entrada, brillo) {
     reflexion = Delay(time: 80ms, feedback: 0.6)
     
     # Ruteo de señal usando el operador de cable
-    return entrada -> difusion -> reflexion -> Gain(brillo)
+    return entrada -> difusion -> reflexion -> Gain(volumen: brillo)
 }
 
 # Configuración principal
-señal_limpia = INPUT
-ambiente = señal_limpia -> ShimmerReverb(brillo: 0.75)
+senal_limpia = INPUT
+ambiente = senal_limpia -> ShimmerReverb(brillo: 0.75)
 
 # Mezcla final enviada al DAW
-[señal_limpia, ambiente] -> Mixer(out: "stereo") -> OUTPUT
+[senal_limpia, ambiente] -> Mixer(out: "stereo") -> OUTPUT
