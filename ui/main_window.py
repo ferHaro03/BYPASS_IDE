@@ -235,11 +235,20 @@ class MainWindow(QMainWindow):
         else:
             self.ast_view.addItem("Parser: [DESACTIVADO]")
 
-        # Semantics dinámico
-        if self.sem_act.isChecked():
-            self.symbol_table.addItem("Semantics: Validando...")
+        # --- FASE 3: SEMÁNTICA (TABLA DE SÍMBOLOS) ---
+        if self.sem_act.isChecked() and not isinstance(ast_result, str):
+            from core.semantics import SemanticAnalyzer
+            analyzer = SemanticAnalyzer()
+            symbol_table, sem_errors = analyzer.analyze(ast_result)
+            
+            self.symbol_table.addItem("--- TABLA DE SÍMBOLOS ---")
+            for sym in symbol_table:
+                self.symbol_table.addItem(str(sym))
+                
+            for err in sem_errors:
+                self.error_console.addItem(err)
         else:
-            self.symbol_table.addItem("Semantics: [DESACTIVADO]")
+            self.symbol_table.addItem("Semantics: [DESACTIVADO o AST Inválido]")
 
     # Métodos de Soporte
     def open_file_from_tree(self, index):

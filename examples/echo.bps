@@ -1,0 +1,37 @@
+# BYPASS - Lo-Fi Tape Echo
+# Simula el desgaste de una cinta magnética antigua con procesamiento en paralelo
+
+# 1. Definición del efecto personalizado
+function ModuloLoFi(senal, desgaste) {
+    saturacion = Fuzz(gain: 0.4, style: "warm")
+    filtro_cinta = Filter(type: "LP", cutoff: desgaste, q: 0.8)
+    
+    return senal -> saturacion -> filtro_cinta
+}
+
+# 2. Variables de Control (Vinculadas a la UI)
+pedal_encendido = true
+corte_frecuencia = 2500hz
+nivel_mezcla = 60%
+
+# 3. Estructuras de Control y Ruteo Principal
+if (pedal_encendido == true) {
+    # Generamos el eco y lo ensuciamos con nuestro módulo
+    cabeza_reproduccion = Delay(time: 400ms, feedback: 0.6)
+    ruta_eco = INPUT -> ModuloLoFi(desgaste: corte_frecuencia) -> cabeza_reproduccion
+    
+    # Splitter: Mezclamos la señal limpia original con la ruta de eco
+    [INPUT, ruta_eco] -> Mixer(wet: nivel_mezcla) -> OUTPUT
+} else {
+    # True Bypass: La señal pasa directa sin afectarse
+    INPUT -> OUTPUT
+}
+
+# 4. Diseño del Panel Frontal (RAD)
+ui_layout {
+    switch(target: pedal_encendido, label: "Bypass / Activo")
+    knob(target: corte_frecuencia, label: "Edad de la Cinta")
+    slider(target: nivel_mezcla, label: "Mezcla Dry/Wet")
+}
+
+OUTPUT -> monitor(type: "oscilloscope")
