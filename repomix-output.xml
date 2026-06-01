@@ -1,0 +1,1662 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.repomixignore
+core/__init__.py
+core/codegen.py
+core/lexer.py
+core/parser.py
+core/semantics.py
+docs/architecture.md
+docs/lexical_analysis.md
+docs/parser_and_ast.md
+docs/teoría.md
+docs/user_manual.md
+examples/classicFuzz.bps
+examples/echo.bps
+examples/shimmerReverb.bps
+main.py
+README.md
+tests/test_lexer.py
+tests/test_parser.py
+ui/__init__.py
+ui/editor.py
+ui/highlighter.py
+ui/main_window.py
+ui/panels.py
+ui/schematic_view.py
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".repomixignore">
+# ==========================================
+# REPOMIX IGNORE - PERFIL PYTHON / BYPASS
+# ==========================================
+
+# 1. Entornos Virtuales (¡CRÍTICO IGNORAR ESTO!)
+venv/
+env/
+.env
+.venv/
+
+# 2. Caché y compilados de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# 3. Multimedia y assets gráficos de la UI
+assets/
+*.png
+*.jpg
+*.ico
+*.svg
+
+# 4. Archivos de Git y configuración del IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# 5. Ejemplos y pruebas (Opcional: Descomenta si solo quieres compartir el motor del compilador)
+# examples/*.bps
+# tests/
+</file>
+
+<file path="docs/teoría.md">
+# 📄 Informe Técnico: Aplicación de la Teoría de Lenguajes y Autómatas en BYPASS
+
+## 1. Introducción al Lenguaje BYPASS
+**BYPASS** es un Lenguaje de Dominio Específico (DSL) diseñado para la programación de interfaces y grafos de audio. Desde la perspectiva teórica de la computación, el desarrollo de BYPASS implica la construcción de un traductor que mapea una cadena de caracteres (código fuente) a una estructura ejecutable (grafo de procesamiento de señales). Para lograr esto, la arquitectura se divide en fases que corresponden directamente a la **Jerarquía de Chomsky**.
+
+---
+
+## 2. Nivel 1: Lenguajes Regulares y Autómatas Finitos (El Lexer)
+
+El analizador léxico de BYPASS funciona como un reconocedor formal de un **Lenguaje Regular (Tipo 3)**. Su objetivo es particionar una cadena de entrada en una secuencia de componentes léxicos (Tokens) válidos según un alfabeto y un conjunto de reglas.
+
+### 2.1 Expresiones Regulares como Especificación Completa
+El alfabeto $\Sigma$ de BYPASS incluye todos los caracteres ASCII imprimibles. Las reglas del lenguaje se definen mediante las siguientes Expresiones Regulares (Regex), evaluadas en orden de prioridad (Regla del *Maximum Munch*):
+
+| Token (Clase Léxica)     | Expresión Regular (Patrón)                                     | Descripción Técnica del Reconocimiento                                                                                    |
+| :----------------------- | :------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |
+| `T_COMMENT`              | `#.*`                                                          | Inicia con `#` y consume cualquier carácter cero o más veces hasta el fin de línea.                                       |
+| `T_ARROW`                | `->`                                                           | Secuencia literal estricta del guion y el símbolo de mayor que.                                                           |
+| `T_NUMBER`               | `\d+(\.\d+)?(hz\|ms\|bpm\|db\|%)?`                             | Evalúa secuencias numéricas con soporte opcional para punto decimal y sufijos de magnitudes físicas del dominio de audio. |
+| `T_STRING`               | `"[^"]*"`                                                      | Captura cadenas literales asegurando que no contengan comillas internas.                                                  |
+| `T_ID`                   | `[a-zA-Z_][a-zA-Z0-9_]*`                                       | Inicia con letra o guion bajo, seguido de caracteres alfanuméricos. Estado de captura general para optimización.          |
+| `T_NEWLINE`              | `                                                              |
+| `                        | Carácter de control de salto de línea para rastreo de errores. |
+| `T_SKIP`                 | `[ 	]+`                                                        | Captura y omite secuencias de uno o más espacios en blanco o tabulaciones.                                                |
+| `T_EE`                   | `==`                                                           | Operador relacional de igualdad.                                                                                          |
+| `T_GE` / `T_LE` / `T_NE` | `>=`, `<=`, `!=`                                               | Operadores relacionales compuestos.                                                                                       |
+| `T_ASSIGN`               | `=`                                                            | Operador de asignación.                                                                                                   |
+| `T_GT` / `T_LT`          | `>`, `<`                                                       | Operadores relacionales simples.                                                                                          |
+| `Aritméticos`            | `\+`, `-`, `\*`, `/`                                           | Caracteres de escape requeridos (`\`) por ser meta-caracteres en Regex.                                                   |
+| `Puntuación`             | `:`, `;`, `,`, `\.`                                            | Delimitadores estructurales y de acceso a miembros.                                                                       |
+| `Agrupación`             | `\(`, `\)`, `\{`, `\}`, `\[`, `\]`                             | Delimitadores de bloques, parámetros y splitters de audio.                                                                |
+| `T_MISMATCH`             | `.`                                                            | Sumidero lógico: Captura caracteres ilegales para el manejo de errores no bloqueantes.                                    |
+
+**Optimización de Estados:**
+En lugar de codificar palabras reservadas en el autómata principal, el Lexer reconoce el token genérico `T_ID` y consulta tablas hash en tiempo $O(1)$ para reclasificarlo en `T_FUNCTION`, `T_BUILTIN_MOD`, `T_USER_FUN` o `T_VAR_ID`.
+
+               +-------------------------------------------+
+               |             Estado Inicial q0             |
+               +-------------------------------------------+
+                                     |
+                          [a-zA-Z_]  |
+                                     v
+               +-------------------------------------------+
+               |              Estado q_ID                  | <---+ [a-zA-Z0-9_]
+               +-------------------------------------------+ ----+
+                                     |
+                          Delimitador / Espacio
+                                     v
+               +-------------------------------------------+
+               |      Fase de Consulta en Tabla Hash       |
+               +-------------------------------------------+
+                 /                 |                      \
+  +--------------------+   +-----------------------+  +----------------------+         
+  | Existe en KEYWORDS |   | Existe en BUILTIN_MOD |  | No existe (ID Local) |
+  +--------------------+   +-----------------------+  +----------------------+
+        /                           |                           \
+       v                            v                            v      
+  +--------------------+     +----------------------+      +---------------------------+             
+  |  Emite T_FUNCTION, |     | Emite T_BUILTIN_MOD  |      |  Revisa primera letra:    |
+  |  T_MONITOR, etc.   |     | (Gain, Filter, etc.) |      | - Mayúscula -> T_USER_FUN |
+  +--------------------+     +----------------------+      | - Minúscula -> T_VAR_ID   |
+                                                           +---------------------------+ 
+
+### 2.2 Formalización del Autómata Finito Determinista (AFD)
+El Lexer se define formalmente como el Autómata Finito Determinista $M = (Q, \Sigma, \delta, q_0, F)$, donde:
+* **$Q$**: Conjunto finito de estados $\{q_0, q_1, q_2, ... q_n\}$.
+* **$\Sigma$**: Alfabeto de entrada (Caracteres ASCII).
+* **$q_0$**: Estado inicial.
+* **$F$**: Conjunto de estados de aceptación.
+* **$\delta$**: Función de transición $\delta(q, c) 
+ightarrow q'$.
+
+#### A. Grafo de Transición para el Token de Flujo (T_ARROW)
+1. Estado inicial **$q_0$** lee `-`, transita a **$q_a$**.
+2. Desde **$q_a$**, si lee `>`, transita al estado de aceptación **$q_{accept\_arrow}$** y emite `T_ARROW`.
+
+#### B. Sub-Autómata Complejo: Magnitudes Físicas (T_NUMBER)
+* **Paso 1 (Parte Entera):** $\delta(q_0, digit) = q_{int} 
+ightarrow \delta(q_{int}, digit) = q_{int}$ (Bucle).
+* **Paso 2 (Decimal):** $\delta(q_{int}, '.') = q_{dot} 
+ightarrow \delta(q_{dot}, digit) = q_{dec} 
+ightarrow \delta(q_{dec}, digit) = q_{dec}$.
+* **Paso 3 (Unidades):** Si desde $q_{int}$ o $q_{dec}$ se recibe 'h', transita a $q_h$. $\delta(q_h, 'z') = q_{accept\_num}$ (Acepta `hz`).
+* **Paso 4 (Aceptación):** Si se recibe espacio u operador, transita a $q_{accept\_num}$ asumiendo un escalar sin unidad.
+
+#### C. Manejo del Estado Sumidero (Resiliencia)
+BYPASS implementa tolerancia a fallos. La expresión regular `.` envía caracteres desconocidos al estado de aceptación $q_{error}$, emitiendo `T_MISMATCH`, registrando el error en consola, y reiniciando el autómata en $q_0$ sin bloquear el IDE.
+
+---
+
+## 3. Nivel 2: Gramáticas Libres de Contexto y Autómatas de Pila (El Parser)
+
+Los tokens sueltos se estructuran lógicamente mediante **Lenguajes Libres de Contexto (Tipo 2)**.
+
+### 3.1 Gramática Libre de Contexto (GLC)
+Definida por la tupla $G = (V, \Sigma, R, S)$. En BYPASS, las reglas de ruteo permiten recursividad asociativa a la derecha:
+* `Routing -> Atom ( -> Routing ) | \epsilon`
+* `Atom -> T_INPUT | T_BUILTIN_MOD | T_VAR_ID`
+
+### 3.2 Autómata de Pila mediante Descenso Recursivo
+BYPASS implementa un **Parser de Descenso Recursivo** (Top-Down Parser). Utiliza la pila de llamadas del sistema operativo (*Call Stack*) para recordar el anidamiento. Al detectar un `->`, la función se llama a sí misma, dotando al Parser de la memoria de un **Autómata de Pila**.
+
+### 3.3 El Árbol de Sintaxis Abstracta (AST)
+Convierte el flujo lineal en un Grafo Dirigido (`AudioRouteNode` como conexiones binarias, `AtomicNode` como hojas), preparando el terreno para el ruteo de audio.
+
+---
+
+## 4. Nivel 3: Lenguajes Sensibles al Contexto (Análisis Semántico)
+
+Corresponde a los **Lenguajes de Tipo 1**. El Autómata de Pila verifica que `A -> B` sea correcto estructuralmente, pero la Semántica valida el contexto mediante una Tabla de Símbolos:
+1. **Tipado por Dominio:** Valida que un `Filter` reciba unidades `hz` y no `ms`.
+2. **Resolución de Scope:** Mapeo de `T_VAR_ID` a instancias en memoria.
+3. **Prevención de Feedback Loop:** Detección de grafos cíclicos prohibidos matemáticamente.
+
+---
+
+## 5. Conclusión de la Arquitectura
+El compilador de BYPASS demuestra la aplicación directa de la abstracción matemática en software funcional. Al aislar las fases en Lexer (AFD), Parser (PDA/GLC) y Semántica (Contexto), se logra un análisis modular que permite validaciones en tiempo real dentro del IDE sin penalizar el rendimiento del motor de audio.
+</file>
+
+<file path="core/__init__.py">
+
+</file>
+
+<file path="core/codegen.py">
+
+</file>
+
+<file path="core/semantics.py">
+class Symbol:
+    def __init__(self, name, type_class, scope, extra_info=""):
+        self.name = name
+        self.type_class = type_class  # 'Variable', 'Funcion', 'Módulo'
+        self.scope = scope            # 'Global' o nombre de la función
+        self.extra_info = extra_info
+
+    def __repr__(self):
+        return f"[{self.scope}] {self.name} : {self.type_class} {self.extra_info}"
+
+class SemanticAnalyzer:
+    def __init__(self):
+        self.symbol_table = []
+        self.current_scope = "Global"
+        self.errors = []
+
+    def analyze(self, ast_root):
+        """Punto de entrada: Recorre todo el árbol (AST)"""
+        if not ast_root or isinstance(ast_root, str): return
+        
+        # Agregamos los puertos globales por defecto
+        self.add_symbol("INPUT", "Puerto", "Global")
+        self.add_symbol("OUTPUT", "Puerto", "Global")
+        
+        self.visit(ast_root)
+        return self.symbol_table, self.errors
+
+    def add_symbol(self, name, type_class, scope, extra=""):
+        # Verificamos que no exista ya en el mismo scope
+        for sym in self.symbol_table:
+            if sym.name == name and sym.scope == scope:
+                return # Ya está registrado
+        self.symbol_table.append(Symbol(name, type_class, scope, extra))
+
+    def visit(self, node):
+        """Patrón Visitor para recorrer los nodos"""
+        method_name = f'visit_{type(node).__name__}'
+        visitor = getattr(self, method_name, self.generic_visit)
+        return visitor(node)
+
+    def generic_visit(self, node):
+        pass
+
+    def visit_ProgramNode(self, node):
+        for stmt in node.statements:
+            self.visit(stmt)
+
+    def visit_AssignmentNode(self, node):
+        # Cuando encontramos una asignación (ej. distorsion = Fuzz)
+        # Lo agregamos a la tabla de símbolos
+        tipo = "Variable"
+        # Pequeña inferencia de tipo
+        if hasattr(node.value, 'token') and node.value.token.kind in ['T_STRING', 'T_NUMBER']:
+            extra = f"(Valor: {node.value.token.value})"
+        else:
+            extra = "(Instancia de Audio)"
+            
+        self.add_symbol(node.target, tipo, self.current_scope, extra)
+        self.visit(node.value)
+
+    def visit_FunctionDeclNode(self, node):
+        # Registramos la función en el entorno global
+        func_name = node.name_token.value
+        self.add_symbol(func_name, "Función", "Global", f"(Args: {len(node.params)})")
+        
+        # Cambiamos el scope al interior de la función
+        previous_scope = self.current_scope
+        self.current_scope = func_name
+        
+        # Registramos los parámetros como variables locales
+        for param in node.params:
+            self.add_symbol(param, "Parámetro", self.current_scope)
+            
+        # Visitamos el cuerpo
+        for stmt in node.body:
+            self.visit(stmt)
+            
+        # Restauramos el scope
+        self.current_scope = previous_scope
+
+    def visit_ModuleCallNode(self, node):
+        # Registramos el uso del módulo
+        self.add_symbol(node.token.value, "Módulo Nativo", "Global")
+
+    def visit_AudioRouteNode(self, node):
+        self.visit(node.left)
+        self.visit(node.right)
+</file>
+
+<file path="docs/architecture.md">
+# Arquitectura del Proyecto: BYPASS IDE
+
+## 1. Visión General
+BYPASS es un entorno de desarrollo integrado (IDE) especializado en la creación de efectos de audio. La arquitectura sigue un modelo modular que separa la interfaz de usuario (UI) de la lógica del compilador (Core).
+
+## 2. Estructura de Directorios Sugerida
+```text
+BYPASS_PROJECT/
+├── main.py              # Punto de entrada de la aplicación
+├── core/                # Corazón del compilador
+│   ├── lexer.py         # Analizador léxico
+│   └── parser.py        # Analizador sintáctico
+├── ui/                  # Interfaz gráfica (PyQt6)
+│   ├── main_window.py   # Ventana principal
+│   └── highlighter.py   # Resaltado de sintaxis
+├── docs/                # Documentación técnica del proyecto
+│   ├── lexical_analysis.md
+│   └── architecture.md
+└── README.md            # Documentación principal del repositorio
+```
+
+## 3. Componentes del IDE
+* **Source View:** Editor con resaltado de sintaxis en tiempo real.
+* **Design View:** Previsualización de la interfaz del plugin (RAD).
+* **Debug View:** Monitoreo de señales (Osciloscopio y Spectrum).
+* **Compiler Output:** Paneles de Lexer, AST y Tabla de Símbolos.
+</file>
+
+<file path="docs/lexical_analysis.md">
+# Especificación del Análisis Léxico: Lenguaje BYPASS
+
+## 1. Introducción
+El análisis léxico es la primera fase del compilador de BYPASS. Su función es transformar el flujo de caracteres del código fuente en una secuencia de **Tokens**. A diferencia de los lenguajes de propósito general, BYPASS clasifica los símbolos no solo por su forma sintáctica, sino por su relevancia en el dominio del procesamiento de señales digitales (DSP) y el diseño de interfaces de audio.
+
+## 2. Tabla Maestra de Tokens (v4.0)
+
+| Categoría | Token | Lexema de Ejemplo | Descripción y Uso |
+| :--- | :--- | :--- | :--- |
+| **Flujo Global** | `T_INPUT` / `T_OUTPUT` | `INPUT`, `OUTPUT` | Puntos de entrada y salida de audio del sistema (Tarjeta de sonido/DAW). |
+| **Módulos Nativos** | `T_BUILTIN_MOD` | `Filter`, `Delay`, `Fuzz` | Procesadores de audio base ("Colores Primarios") integrados en el motor. |
+| **Usuario** | `T_USER_FUN` | `Shimmer`, `MiEfecto` | Algoritmos definidos por el usuario (Identificadores con inicial Mayúscula). |
+| **Variables** | `T_VAR_ID` | `difusion`, `volumen` | Identificadores para instancias de módulos o valores locales (Minúsculas). |
+| **Estructura** | `T_FUNCTION`, `T_RETURN` | `function`, `return` | Palabras clave para la definición de bloques lógicos. |
+| **Datos de Audio** | `T_NUMBER` | `440hz`, `-12db`, `50ms` | Valores numéricos que incluyen magnitudes físicas de audio. |
+| **Conexión** | `T_ARROW` | `->` | Operador de ruteo que define el flujo de señal entre nodos. |
+| **Interfaz (GUI)** | `T_LAYOUT`, `T_KNOB` | `ui_layout`, `knob` | Declaración de componentes visuales y controles para el plugin final. |
+| **Diagnóstico** | `T_MONITOR` | `monitor`, `oscilloscope` | Herramientas de inspección exclusivas del IDE de desarrollo. |
+| **Lógica** | `T_EE`, `T_GE`, `T_NE` | `==`, `>=`, `!=` | Operadores de comparación para estructuras de control de flujo. |
+| **Agrupación** | `T_LBRACKET`, `T_LBRACE` | `[ ]`, `{ }` | Delimitadores para procesamiento paralelo y bloques de código. |
+
+## 3. Tipos de Datos de Dominio
+En BYPASS, los tokens de datos se categorizan para facilitar el posterior análisis semántico:
+* **Escalares y Magnitudes:** El token `T_NUMBER` soporta unidades específicas (`hz`, `ms`, `db`, `%`). Esto permite que el compilador valide si un valor es apto para un parámetro (ej. un `cutoff` no puede recibir `ms`).
+* **Objetos Procesadores:** Los tokens `T_BUILTIN_MOD` y `T_USER_FUN` representan nodos de procesamiento que pueden recibir y entregar flujos de audio.
+
+## 4. Gestión de Errores Léxicos
+Un error léxico en BYPASS ocurre cuando el analizador encuentra una secuencia de caracteres que no pertenece al alfabeto definido del lenguaje.
+
+### Casos Comunes de Error:
+1. **Caracteres Ilegales:** Uso de símbolos no definidos en las reglas de expresiones regulares, como `@`, `$`, `?` o `¿`.
+2. **Malformación de Unidades:** El Lexer espera unidades de audio específicas. Una unidad no reconocida dejará caracteres "huérfanos".
+3. **Strings Incompletos:** Cadenas de texto que no cierran sus comillas antes del final de la línea.
+4. **Identificadores Inválidos:** Nombres que intentan comenzar con caracteres numéricos.
+</file>
+
+<file path="docs/parser_and_ast.md">
+# 🌳 Documentación del Analizador Sintáctico (Parser) y AST
+
+## 1. Visión General
+El **Parser** (Analizador Sintáctico) es la segunda fase del compilador de BYPASS. Su responsabilidad es recibir la lista de tokens planos generada por el Lexer y organizarlos en una estructura jerárquica llamada **Árbol de Sintaxis Abstracta (AST)**. 
+
+Si el Lexer verifica que las "palabras" existan, el Parser verifica que las "oraciones" tengan sentido gramatical.
+
+## 2. Nodos del Árbol de Sintaxis Abstracta (AST)
+El Parser de BYPASS traduce el código en los siguientes nodos lógicos:
+
+* **`ProgramNode`**: El nodo raíz que contiene todas las sentencias del script.
+* **`AudioRouteNode`**: Representa una conexión de audio (`A -> B`).
+* **`SplitterNode`**: Representa procesamiento paralelo (`[Rama1, Rama2]`).
+* **`ModuleCallNode`**: Llamada a un módulo nativo con parámetros (`Filter(cutoff: 500hz)`).
+* **`FunctionDeclNode`**: Declaración de un efecto personalizado (`function MiEfecto(...)`).
+* **`AssignmentNode`**: Asignación de variables (`target = valor`).
+* **`UILayoutNode`**: Bloque de declaración de interfaz gráfica (`ui_layout { ... }`).
+* **`IfNode` & `ConditionNode`**: Estructuras de control lógico.
+
+### 3.1 Catálogo de Errores Sintácticos (Detectados por el Parser)
+
+Los errores sintácticos ocurren cuando los tokens son válidos (el Lexer los reconoció), pero están organizados en un orden que viola las reglas de producción de la Gramática Libre de Contexto (GLC) de BYPASS. 
+
+El método `eat(token_esperado)` del autómata de pila es el encargado de disparar estas excepciones.
+
+#### 1. Formato de Parámetros Incorrecto (Missing Colon)
+BYPASS exige argumentos nombrados estrictos.
+* **Código Erróneo:** `Filter(cutoff, 500hz)` o `Gain(0.5)`
+* **Lo que ve el Parser:** `T_VAR_ID T_COMMA` o `T_NUMBER`
+* **Excepción disparada:** `Se esperaba T_COLON pero se encontró T_COMMA`. El autómata exige la estructura `T_VAR_ID -> T_COLON -> Valor`.
+
+#### 2. Nodos de Ruteo Inválidos (Invalid Atom)
+El operador de ruteo (`->`) requiere obligatoriamente un componente de audio a ambos lados.
+* **Código Erróneo:** `INPUT -> -> OUTPUT` o `INPUT -> + -> OUTPUT`
+* **Lo que ve el Parser:** `T_ARROW` seguido de otro `T_ARROW` o un operador aritmético.
+* **Excepción disparada:** `Esperaba Nodo de Audio, encontré '->'`.
+
+#### 3. Desbalance de Delimitadores (Unmatched Brackets/Braces)
+Ocurre cuando el usuario olvida cerrar bloques lógicos, funciones o arreglos de procesamiento paralelo (Splitters).
+* **Código Erróneo:** `INPUT -> [Filter, Delay -> OUTPUT`
+* **Lo que ve el Parser:** Llega el token `T_ARROW` cuando la regla del Splitter exigía un `T_COMMA` o un `T_RBRACKET` (`]`).
+* **Excepción disparada:** `Se esperaba T_RBRACKET pero se encontró T_ARROW`.
+
+#### 4. Objetivo de Asignación Inválido (Invalid L-Value)
+El operador de asignación (`=`) requiere estrictamente que el lado izquierdo sea un identificador de variable (`T_VAR_ID`).
+* **Código Erróneo:** `500hz = Filter(cutoff: 500hz)` o `Gain = Fuzz(...)`
+* **Lo que ve el Parser:** Un `T_NUMBER` o un `T_BUILTIN_MOD` seguido de un `T_ASSIGN`.
+* **Excepción disparada:** El parser falla al intentar evaluar esto como una sentencia de inicio, marcando error de sentencia no reconocida.
+
+#### 5. Estructuras de Control Malformadas
+Olvidar los elementos obligatorios en un bloque `if` o `ui_layout`.
+* **Código Erróneo:** `if bypass == true { INPUT -> OUTPUT }` (Faltan paréntesis).
+* **Lo que ve el Parser:** `T_IF` seguido de un `T_VAR_ID`.
+* **Excepción disparada:** `Se esperaba T_LPAREN pero se encontró T_VAR_ID`. El Parser exige que la condición del `if` esté envuelta en `()`.
+
+## 3. Manejo de Errores Sintácticos (Modo Pánico)
+El Parser implementa un sistema de recuperación de errores conocido como **Panic Mode**. 
+Cuando el usuario comete un error de escritura (ej. olvidar un paréntesis o dos puntos `:`), el compilador no se detiene abruptamente. Atrapa la excepción, la registra en la consola de errores y utiliza el método `synchronize()` para saltar tokens hasta encontrar una nueva línea segura, permitiendo que el IDE analice el resto del código sin congelarse.
+
+---
+
+## 4. Frontera con el Análisis Semántico
+El Parser asegura que la estructura gramatical sea perfecta, pero **no comprende el significado físico o lógico del código**. Una sentencia puede ser sintácticamente correcta pero **semánticamente inválida**.
+
+El AST generado por este Parser será consumido por el Analizador Semántico (Fase 3) para detectar los siguientes **Errores Semánticos**:
+
+### A. Incompatibilidad de Dominio (Type Mismatch)
+Ocurre cuando se asigna un valor a un parámetro que espera una magnitud física diferente.
+* **Sintácticamente válido:** `Filter(cutoff: 50ms)` (El Parser solo ve `ID(ID: NUMBER)`).
+* **Error Semántico:** El parámetro `cutoff` del filtro exige una frecuencia (`hz`), pero recibió un tiempo (`ms`).
+
+### B. Violación de Ámbito (Scope / Undeclared Variables)
+Ocurre al intentar usar o rutear una señal que no existe en el contexto actual.
+* **Sintácticamente válido:** `INPUT -> mi_fuzz_fantasma -> OUTPUT`
+* **Error Semántico:** La variable `mi_fuzz_fantasma` no ha sido declarada previamente mediante una asignación o como parámetro de función.
+
+### C. Bucles de Retroalimentación Ilegales (Feedback Loops)
+El lenguaje BYPASS previene explosiones de señal en el motor DSP.
+* **Sintácticamente válido:** `Reverb -> Gain -> Reverb`
+* **Error Semántico:** Crear un ciclo cerrado sin insertar un módulo de memoria (`Delay`) generará una falla de recursividad infinita en el procesamiento de audio.
+
+### D. Cadenas de Ruteo Huérfanas (Missing Terminus)
+Las leyes del ruteo exigen un flujo continuo desde el inicio hasta el final.
+* **Sintácticamente válido:** `INPUT -> Filter -> Gain(0.5)`
+* **Error Semántico:** La cadena no finaliza en `OUTPUT` ni en un `monitor`. El audio procesado en esta línea se perderá en el vacío.
+
+### E. Propiedades Inexistentes
+Ocurre en la interfaz gráfica o al acceder a miembros con notación de punto.
+* **Sintácticamente válido:** `knob(target: Fuzz.volumen_magico)`
+* **Error Semántico:** El módulo nativo `Fuzz` no posee una propiedad llamada `volumen_magico` (solo posee `gain` o `style`).
+</file>
+
+<file path="docs/user_manual.md">
+# 🎸 Manual de Usuario: BYPASS DSL
+**Entorno de Desarrollo para Efectos de Audio**
+
+Bienvenido a **BYPASS**, un lenguaje de dominio específico (DSL) diseñado para simplificar la creación de algoritmos de procesamiento de señal digital (DSP) mediante una sintaxis intuitiva basada en el flujo de señales.
+
+## 📑 Contenido
+- [🎸 Manual de Usuario: BYPASS DSL](#-manual-de-usuario-bypass-dsl)
+  - [📑 Contenido](#-contenido)
+  - [1. Interfaz del IDE](#1-interfaz-del-ide)
+  - [2. Sintaxis Básica](#2-sintaxis-básica)
+    - [Definición de Identificadores](#definición-de-identificadores)
+    - [Tipos de Datos y Unidades](#tipos-de-datos-y-unidades)
+  - [3. Módulos Nativos](#3-módulos-nativos)
+  - [4. Flujo de Señal (Ruteo)](#4-flujo-de-señal-ruteo)
+  - [5. Ejemplos Prácticos](#5-ejemplos-prácticos)
+
+---
+
+## 1. Interfaz del IDE
+El IDE de BYPASS está dividido en paneles especializados para optimizar tu flujo de trabajo:
+
+* **Explorador de Archivos (Izquierda):** Gestiona tus proyectos con extensión `.bps`.
+* **Editor de Código (Centro):** Incluye resaltado de sintaxis estilo Monokai y numeración de líneas.
+* **Vistas de Trabajo (Pestañas Centrales):**
+    * **Source:** Donde escribes tu código.
+    * **Design:** Previsualización de la interfaz de usuario (perillas, sliders).
+    * **Debug:** Monitoreo en tiempo real con Osciloscopio y Analizador de Espectro.
+* **Salida del Compilador (Derecha):** Inspecciona cómo el Lexer procesa tus tokens en tiempo real.
+
+---
+
+## 2. Sintaxis Básica
+
+### Definición de Identificadores
+* **Módulos y Funciones:** Deben comenzar con **Mayúscula** (ej. `Delay`, `MiEfecto`).
+* **Variables y Parámetros:** Deben comenzar con **minúscula** (ej. `señal`, `volumen`).
+
+### Tipos de Datos y Unidades
+BYPASS entiende el contexto físico de la música. Puedes usar números con unidades integradas:
+* **Frecuencia:** `440hz`
+* **Tiempo:** `50ms`
+* **Ganancia:** `-12db`
+* **Proporción:** `50%`
+
+---
+
+## 3. Módulos Nativos
+El lenguaje incluye "Colores Primarios" o módulos de procesamiento base:
+
+| Categoría | Módulos Disponibles |
+| :--- | :--- |
+| **Dinámica** | `Gain`, `Fuzz`, `Gate` |
+| **Espectro** | `Filter`, `EQ` |
+| **Espacio** | `Delay`, `Reverb` |
+| **Modulación** | `LFO`, `Chorus` |
+| **Utilidad** | `Mixer`, `INPUT`, `OUTPUT` |
+
+---
+
+## 4. Flujo de Señal (Ruteo)
+La magia de BYPASS reside en el operador de ruteo `->`. Este conecta la salida de un módulo con la entrada del siguiente.
+
+**Ejemplo de cadena simple:**
+```bypass
+INPUT -> Fuzz(gain: 0.8) -> Gain(volume: 0.5) -> OUTPUT
+```
+También puedes realizar procesamiento en paralelo utilizando corchetes [ ] y enviando el resultado a un Mixer.
+
+## 5. Ejemplos Prácticos
+
+**Crear un Fuzz Personalizado**
+```bypass
+function ClassicFuzz(señal) {
+    distorsion = Fuzz(gain: 0.85, style: "vintage")
+    filtro = Filter(type: "BP", cutoff: 2500hz, q: 1.2)
+    
+    return señal -> distorsion -> filtro
+}
+
+INPUT -> ClassicFuzz -> OUTPUT
+```
+
+**Reverb Espacial (Shimmer)**
+```bypass
+function ShimmerReverb(entrada, brillo) {
+    difusion = Filter(type: "LP", cutoff: 12000hz)
+    reflexion = Delay(time: 80ms, feedback: 0.6)
+    
+    return entrada -> difusion -> reflexion -> Gain(brillo)
+}
+
+# Mezcla de señal limpia y procesada
+[INPUT, INPUT -> ShimmerReverb(brillo: 0.75)] -> Mixer(out: "stereo") -> OUTPUT
+```
+</file>
+
+<file path="examples/echo.bps">
+# BYPASS - Lo-Fi Tape Echo
+# Simula el desgaste de una cinta magnética antigua con procesamiento en paralelo
+
+# 1. Definición del efecto personalizado
+function ModuloLoFi(senal, desgaste) {
+    saturacion = Fuzz(gain: 0.4, style: "warm")
+    filtro_cinta = Filter(type: "LP", cutoff: desgaste, q: 0.8)
+    
+    return senal -> saturacion -> filtro_cinta
+}
+
+# 2. Variables de Control (Vinculadas a la UI)
+pedal_encendido = true
+corte_frecuencia = 2500hz
+nivel_mezcla = 60%
+
+# 3. Estructuras de Control y Ruteo Principal
+if (pedal_encendido == true) {
+    # Generamos el eco y lo ensuciamos con nuestro módulo
+    cabeza_reproduccion = Delay(time: 400ms, feedback: 0.6)
+    ruta_eco = INPUT -> ModuloLoFi(desgaste: corte_frecuencia) -> cabeza_reproduccion
+    
+    # Splitter: Mezclamos la señal limpia original con la ruta de eco
+    [INPUT, ruta_eco] -> Mixer(wet: nivel_mezcla) -> OUTPUT
+} else {
+    # True Bypass: La señal pasa directa sin afectarse
+    INPUT -> OUTPUT
+}
+
+# 4. Diseño del Panel Frontal (RAD)
+ui_layout {
+    switch(target: pedal_encendido, label: "Bypass / Activo")
+    knob(target: corte_frecuencia, label: "Edad de la Cinta")
+    slider(target: nivel_mezcla, label: "Mezcla Dry/Wet")
+}
+
+OUTPUT -> monitor(type: "oscilloscope")
+</file>
+
+<file path="main.py">
+import sys
+from PyQt6.QtWidgets import QApplication
+from ui.main_window import MainWindow
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
+</file>
+
+<file path="tests/test_lexer.py">
+
+</file>
+
+<file path="tests/test_parser.py">
+
+</file>
+
+<file path="ui/__init__.py">
+
+</file>
+
+<file path="ui/editor.py">
+
+</file>
+
+<file path="ui/panels.py">
+
+</file>
+
+<file path="ui/schematic_view.py">
+
+</file>
+
+<file path="examples/classicFuzz.bps">
+# BYPASS - Emulación de Fuzz de Silicio
+# Sonido clásico de los 70s
+
+function ClassicFuzz(senal) {
+    # Definimos el carácter del pedal
+    caracter = "vintage"
+    
+    distorsion_roja = Fuzz(gain: 0.85, style: caracter)
+    filtro_tono = Filter(type: "BP", cutoff: 2500hz, q: 1.2)
+    
+    return senal -> distorsion_roja -> filtro_tono
+}
+
+# Procesamiento directo
+INPUT -> ClassicFuzz -> Gain(volume: 0.9) -> OUTPUT
+</file>
+
+<file path="examples/shimmerReverb.bps">
+# BYPASS - Algoritmo de Reverb Espacial
+# Diseñado para ambientes psicodélicos
+
+function ShimmerReverb(entrada, brillo) {
+    # Creamos una cadena de efectos en serie
+    difusion = Filter(type: "LP", cutoff: 12000hz)
+    reflexion = Delay(time: 80ms, feedback: 0.6)
+    
+    # Ruteo de señal usando el operador de cable
+    return entrada -> difusion -> reflexion -> Gain(volumen: brillo)
+}
+
+# Configuración principal
+senal_limpia = INPUT
+ambiente = senal_limpia -> ShimmerReverb(brillo: 0.75)
+
+# Mezcla final enviada al DAW
+[senal_limpia, ambiente] -> Mixer(out: "stereo") -> OUTPUT
+</file>
+
+<file path="core/lexer.py">
+import re
+
+class Token:
+    def __init__(self, kind, value, line, column):
+        self.kind = kind
+        self.value = value
+        self.line = line
+        self.column = column
+
+    def __repr__(self):
+        return f"{self.kind:<15} | {self.value}"
+
+class LexerBYPASS:
+    def __init__(self, source_code):
+        self.source_code = source_code
+        self.tokens = []
+        self.errors = []
+        self.line = 1
+        self.line_start = 0
+        
+        # Diccionario de Palabras Reservadas
+        self.KEYWORDS = {
+            'function': 'T_FUNCTION',
+            'return':   'T_RETURN',
+            'if':       'T_IF',
+            'else':     'T_ELSE',
+            'for':      'T_FOR',
+            'in':       'T_IN',
+            'ui_layout':'T_LAYOUT',
+            'knob':     'T_KNOB',
+            'switch':   'T_SWITCH',
+            'slider':   'T_SLIDER',
+            'label':    'T_LABEL',
+            # Tokens de Diagnóstico (Solo para el IDE)
+            'monitor':     'T_MONITOR',
+            'oscilloscope':'T_OSCILLO',
+            'spectrum':    'T_SPECTRUM',
+            'INPUT':    'T_INPUT',
+            'OUTPUT':   'T_OUTPUT'
+        }
+
+        # Módulos nativos (Colores Primarios)
+        self.BUILTIN_MODULES = [
+            'Gain', 'Fuzz', 'Gate',           # Dinámica
+            'Filter', 'EQ',                   # Espectro
+            'Delay', 'Reverb',                # Espacio
+            'LFO', 'Chorus',                  # Modulación
+            'Mixer'                           # Utilidad
+        ]
+
+    def tokenize(self):
+        rules = [
+            ('T_COMMENT',   r'#.*'),
+            ('T_ARROW',     r'->'),
+            ('T_NUMBER',    r'\d+(\.\d+)?(hz|ms|bpm|db|%)?'),
+            ('T_STRING',    r'"[^"]*"'),
+            ('T_ID',        r'[a-zA-Z_][a-zA-Z0-9_]*'), # Captura cualquier palabra
+            ('T_NEWLINE',   r'\n'),
+            ('T_SKIP',      r'[ \t]+'),
+            ('T_EE',        r'=='),
+            ('T_GE',        r'>='),
+            ('T_LE',        r'<='),
+            ('T_NE',        r'!='),
+            ('T_ASSIGN',    r'='),
+            ('T_GT',        r'>'),
+            ('T_LT',        r'<'),
+            ('T_PLUS',      r'\+'),
+            ('T_MINUS',     r'-'),
+            ('T_MUL',       r'\*'),
+            ('T_DIV',       r'/'),
+            ('T_COLON',     r':'),
+            ('T_SEMICOLON', r';'),
+            ('T_COMMA',     r','),
+            ('T_DOT',       r'\.'),
+            ('T_LPAREN',    r'\('),
+            ('T_RPAREN',    r'\)'),
+            ('T_LBRACE',    r'\{'),
+            ('T_RBRACE',    r'\}'),
+            ('T_LBRACKET',  r'\['),
+            ('T_RBRACKET',  r'\]'),
+            ('T_MISMATCH',  r'.'), 
+        ]
+        
+        regex = '|'.join('(?P<%s>%s)' % pair for pair in rules)
+        
+        for mo in re.finditer(regex, self.source_code):
+            kind = mo.lastgroup
+            value = mo.group()
+            column = mo.start() - self.line_start + 1
+            
+            if kind == 'T_NEWLINE':
+                self.line_start = mo.end()
+                self.line += 1
+                continue
+            elif kind == 'T_SKIP' or kind == 'T_COMMENT':
+                continue
+            elif kind == 'T_ID':
+                # --- LÓGICA DE CLASIFICACIÓN REFINADA ---
+                if value in self.KEYWORDS:
+                    kind = self.KEYWORDS[value]
+                elif value in self.BUILTIN_MODULES:
+                    kind = 'T_BUILTIN_MOD'
+                elif value[0].isupper():
+                    kind = 'T_USER_FUN'
+                else:
+                    kind = 'T_VAR_ID'
+                self.tokens.append(Token(kind, value, self.line, column))
+            elif kind == 'T_MISMATCH':
+                err_msg = f"Error Léxico: Carácter ilegal '{value}' en línea {self.line}, col {column}"
+                self.errors.append(err_msg)
+                self.tokens.append(Token('T_ERROR', value, self.line, column))
+            else:
+                self.tokens.append(Token(kind, value, self.line, column))
+        
+        self.tokens.append(Token('T_EOF', 'EOF', self.line, 1))
+        return self.tokens, self.errors
+</file>
+
+<file path="README.md">
+# BYPASS IDE 🎸🔊
+**Un lenguaje de dominio específico (DSL) para el diseño de efectos de audio.**
+
+BYPASS es un entorno de desarrollo integrado diseñado para que músicos y productores puedan programar sus propios algoritmos de procesamiento de señal (DSP) de forma intuitiva.
+
+## ✨ Características actuales
+- **Lexer Resiliente:** Identificación de tokens en tiempo real con manejo de errores no bloqueante.
+- **Editor Pro:** Numeración de líneas, resaltado de sintaxis (Monokai style) y soporte para caracteres latinos.
+- **Explorador de Archivos:** Gestión de proyectos `.bps` integrada.
+- **Interfaz Moderna:** Construida en Python con PyQt6, optimizada para flujo de trabajo de ingeniería.
+
+## 🛠️ Requisitos
+- Python 3.10+
+- PyQt6
+
+## 🚀 Instalación y Uso
+1. Clona el repositorio:
+   ```bash
+   git clone [https://github.com/ferHaro03/BYPASS_IDE.git](https://github.com/ferHaro03/BYPASS_IDE.git)
+
+2. Instala las dependencias:
+   ```bash
+   pip install PyQt6
+
+3. Ejecuta el IDE:
+   ```bash
+   python main.py
+  
+## 📚 Documentación
+Para entender a fondo el funcionamiento del lenguaje, consulta:
+* [Análisis Léxico y Tokens](./docs/lexical_analysis.md)
+* [Arquitectura del Sistema](./docs/architecture.md)
+* [Manual de Usuario](./docs/user_manual.md)
+</file>
+
+<file path="ui/highlighter.py">
+from PyQt6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
+from PyQt6.QtCore import Qt
+import re
+
+class BypassHighlighter(QSyntaxHighlighter):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.rules = []
+
+        # --- 1. IDENTIFICADORES DE USUARIO (Nivel Base) ---
+        user_fun_fmt = QTextCharFormat()
+        user_fun_fmt.setForeground(QColor("#A6E22E")) 
+        user_fun_fmt.setFontItalic(True)
+        self.rules.append((re.compile(r'\b[A-Z][a-zA-Z0-9_]*\b'), user_fun_fmt))
+
+        # --- 2. MÓDULOS NATIVOS / COLORES PRIMARIOS (Prioridad Media) ---
+        builtin_mod_fmt = QTextCharFormat()
+        builtin_mod_fmt.setForeground(QColor("#66D9EF")) 
+        builtin_mod_fmt.setFontWeight(QFont.Weight.Bold)
+        builtin_mod_fmt.setFontItalic(False) 
+        nativos = r'\b(Gain|Fuzz|Gate|Filter|EQ|Delay|Reverb|LFO|Chorus|Mixer)\b'
+        self.rules.append((re.compile(nativos), builtin_mod_fmt))
+
+        # --- 3. PUERTOS GLOBALES (Prioridad Máxima) ---
+        builtin_fmt = QTextCharFormat()
+        builtin_fmt.setForeground(QColor("#FD971F")) 
+        builtin_fmt.setFontWeight(QFont.Weight.Bold)
+        for bi in [r'\bINPUT\b', r'\bOUTPUT\b']:
+            self.rules.append((re.compile(bi), builtin_fmt))
+
+        # --- 4. HERRAMIENTAS DE DIAGNÓSTICO (NUEVO - Color Técnico) ---
+        # monitor, oscilloscope, spectrum
+        diag_fmt = QTextCharFormat()
+        diag_fmt.setForeground(QColor("#98AFC7")) # Color Slate/Acero
+        diag_fmt.setFontWeight(QFont.Weight.Bold)
+        diagnostics = [r'\bmonitor\b', r'\boscilloscope\b', r'\bspectrum\b']
+        for diag in diagnostics:
+            self.rules.append((re.compile(diag), diag_fmt))
+
+        # --- 5. KEYWORDS ESTRUCTURALES (Amarillo) ---
+        kw_fmt = QTextCharFormat()
+        kw_fmt.setForeground(QColor("#E6DB74"))
+        kw_fmt.setFontWeight(QFont.Weight.Bold)
+        keywords = [
+            r'\bfunction\b', r'\breturn\b', r'\bif\b', r'\belse\b', 
+            r'\bfor\b', r'\bin\b', r'\bui_layout\b', r'\btest_source\b'
+        ]
+        for kw in keywords:
+            self.rules.append((re.compile(kw), kw_fmt))
+
+        # --- 6. GUI WIDGETS (Naranja claro) ---
+        gui_fmt = QTextCharFormat()
+        gui_fmt.setForeground(QColor("#FFB86C"))
+        gui_widgets = [r'\bknob\b', r'\bswitch\b', r'\bslider\b', r'\blabel\b']
+        for widget in gui_widgets:
+            self.rules.append((re.compile(widget), gui_fmt))
+
+        # --- 7. NÚMEROS Y UNIDADES (Morado) ---
+        num_fmt = QTextCharFormat()
+        num_fmt.setForeground(QColor("#AE81FF"))
+        self.rules.append((re.compile(r'\b\d+(\.\d+)?(hz|ms|bpm|db|%)?\b'), num_fmt))
+
+        # --- 8. OPERADORES Y RUTEO (Magenta) ---
+        op_fmt = QTextCharFormat()
+        op_fmt.setForeground(QColor("#F92672"))
+        op_fmt.setFontWeight(QFont.Weight.Bold)
+        operators = [r'->', r'==', r'>=', r'<=', r'!=', r'>', r'<', r'=', r'\+', r'-', r'\*', r'/']
+        for op in operators:
+            self.rules.append((re.compile(op), op_fmt))
+
+        # --- 9. STRINGS (Verde crema) ---
+        str_fmt = QTextCharFormat()
+        str_fmt.setForeground(QColor("#E6DB74"))
+        self.rules.append((re.compile(r'"[^"]*"'), str_fmt))
+
+        # --- 10. COMENTARIOS (Gris) ---
+        comm_fmt = QTextCharFormat()
+        comm_fmt.setForeground(QColor("#75715E"))
+        self.rules.append((re.compile(r'#.*'), comm_fmt))
+
+    def highlightBlock(self, text):
+        for pattern, fmt in self.rules:
+            for match in pattern.finditer(text):
+                self.setFormat(match.start(), match.end() - match.start(), fmt)
+</file>
+
+<file path="core/parser.py">
+import difflib
+
+# ==========================================
+# 🌳 NODOS DEL ÁRBOL DE SINTAXIS ABSTRACTA
+# ==========================================
+
+class ASTNode:
+    pass
+
+class ProgramNode(ASTNode):
+    def __init__(self, statements):
+        self.statements = statements
+    def __repr__(self):
+        return "\n".join([str(stmt) for stmt in self.statements])
+
+class AudioRouteNode(ASTNode):
+    def __init__(self, left, op_token, right):
+        self.left = left
+        self.op_token = op_token
+        self.right = right
+    def __repr__(self):
+        return f"({self.left} {self.op_token.value} {self.right})"
+
+class SplitterNode(ASTNode):
+    def __init__(self, branches):
+        self.branches = branches 
+    def __repr__(self):
+        branches_str = ", ".join([str(b) for b in self.branches])
+        return f"Splitter[{branches_str}]"
+
+class ModuleCallNode(ASTNode):
+    def __init__(self, token, params):
+        self.token = token
+        self.params = params
+    def __repr__(self):
+        params_str = ", ".join([f"{k}:{v}" for k, v in self.params])
+        return f"{self.token.value}({params_str})"
+
+class AtomicNode(ASTNode):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
+    def __repr__(self):
+        return f"{self.token.value}"
+    
+class FunctionDeclNode(ASTNode):
+    def __init__(self, name_token, params, body):
+        self.name_token = name_token
+        self.params = params
+        self.body = body
+    def __repr__(self):
+        cuerpo_str = "\n  ".join([str(stmt) for stmt in self.body])
+        return f"FunctionDef({self.name_token.value}, args={self.params}) {{\n  {cuerpo_str}\n}}"
+
+class AssignmentNode(ASTNode):
+    def __init__(self, target, value):
+        self.target = target
+        self.value = value
+    def __repr__(self):
+        return f"Assign({self.target} = {self.value})"
+
+class ReturnNode(ASTNode):
+    def __init__(self, value):
+        self.value = value
+    def __repr__(self):
+        return f"Return({self.value})"
+
+class UILayoutNode(ASTNode):
+    def __init__(self, widgets):
+        self.widgets = widgets
+    def __repr__(self):
+        w_str = "\n  ".join([str(w) for w in self.widgets])
+        return f"UILayout {{\n  {w_str}\n}}"
+
+class ConditionNode(ASTNode):
+    def __init__(self, left, op_token, right):
+        self.left = left
+        self.op_token = op_token
+        self.right = right
+    def __repr__(self):
+        return f"{self.left} {self.op_token.value} {self.right}"
+
+class IfNode(ASTNode):
+    def __init__(self, condition, true_body, false_body=None):
+        self.condition = condition
+        self.true_body = true_body
+        self.false_body = false_body
+    def __repr__(self):
+        t_str = "\n  ".join([str(s) for s in self.true_body])
+        res = f"If({self.condition}) {{\n  {t_str}\n}}"
+        if self.false_body:
+            f_str = "\n  ".join([str(s) for s in self.false_body])
+            res += f" Else {{\n  {f_str}\n}}"
+        return res
+
+
+# ==========================================
+# ⚙️ ANALIZADOR SINTÁCTICO (PARSER)
+# ==========================================
+
+class ParserBYPASS:
+    def __init__(self, tokens):
+        self.tokens = [t for t in tokens if t.kind != 'T_SKIP' and t.kind != 'T_COMMENT' and t.kind != 'T_NEWLINE']
+        self.pos = 0
+        self.current_token = self.tokens[self.pos] if self.tokens else None
+        self.errors = []
+
+    def advance(self):
+        self.pos += 1
+        self.current_token = self.tokens[self.pos] if self.pos < len(self.tokens) else None
+
+    # --- RECUPERACIÓN INTELIGENTE DE ERRORES ---
+    def report_error(self, message, suggestion):
+        """Registra el error con contexto y sugerencia sin detener el IDE"""
+        linea = self.current_token.line if self.current_token else "EOF"
+        token_val = self.current_token.value if self.current_token else "Fin de archivo"
+        error_completo = f"❌ Línea {linea} | Error cerca de '{token_val}': {message}\n   💡 Sugerencia: {suggestion}"
+        self.errors.append(error_completo)
+
+    def synchronize(self):
+        """Avanza hasta un punto seguro para seguir leyendo si el error es grave"""
+        self.advance()
+        while self.current_token and self.current_token.kind != 'T_EOF':
+            if self.current_token.kind in ['T_FUNCTION', 'T_IF', 'T_LAYOUT', 'T_INPUT', 'T_VAR_ID']:
+                return
+            self.advance()
+
+    class DummyToken:
+        """Token falso para que el AST no explote si falta una variable o símbolo"""
+        def __init__(self, value="ERROR"):
+            self.value = value
+            self.kind = "T_ERROR"
+
+    def eat(self, token_kind, suggestion="Revisa la sintaxis de BYPASS."):
+        """Consume el token si coincide, si no, reporta inteligentemente y salva el AST"""
+        if self.current_token and self.current_token.kind == token_kind:
+            token = self.current_token
+            self.advance()
+            return token
+        else:
+            kind_actual = self.current_token.kind if self.current_token else "EOF"
+            self.report_error(f"Se esperaba {token_kind} pero se encontró {kind_actual}", suggestion)
+            return self.DummyToken()
+
+    # --- MÉTODOS DE LECTURA GRAMATICAL ---
+    def parse_module_call(self, module_token):
+        self.eat('T_LPAREN', "Los módulos deben llevar paréntesis, ej: Filter(cutoff: 500hz)")
+        params = []
+        while self.current_token and self.current_token.kind != 'T_RPAREN' and self.current_token.kind != 'T_EOF':
+            
+            param_name = "desconocido"
+            if self.current_token.kind in ['T_VAR_ID', 'T_LABEL']:
+                param_name = self.current_token.value
+                self.advance()
+            else:
+                self.report_error("Falta nombre de parámetro.", f"Usa el formato 'nombre_parametro: {self.current_token.value}'")
+                self.advance()
+            
+            self.eat('T_COLON', "Separa el parámetro de su valor con dos puntos ':'")
+
+            if self.current_token and self.current_token.kind in ['T_NUMBER', 'T_STRING', 'T_VAR_ID', 'T_BUILTIN_MOD', 'T_USER_FUN']:
+                param_value = self.current_token.value
+                self.advance()
+                
+                if self.current_token and self.current_token.kind == 'T_DOT':
+                    self.eat('T_DOT')
+                    if self.current_token.kind == 'T_VAR_ID':
+                        prop = self.current_token.value
+                        param_value = f"{param_value}.{prop}"
+                        self.advance()
+                params.append((param_name, param_value))
+            else:
+                self.report_error("Valor inválido.", "Usa números, variables o strings.")
+                self.advance()
+                
+            if self.current_token and self.current_token.kind == 'T_COMMA':
+                self.eat('T_COMMA')
+            elif self.current_token and self.current_token.kind != 'T_RPAREN':
+                 self.report_error("Falta coma.", "Separa múltiples parámetros con comas ','")
+                 self.advance()
+                
+        self.eat('T_RPAREN', "Cierra los parámetros con ')'")
+        return ModuleCallNode(module_token, params)
+
+    def parse_atom(self):
+        token = self.current_token
+        if not token: return AtomicNode(self.DummyToken("None"))
+        
+        # 1. ¿Es un Splitter?
+        if token.kind == 'T_LBRACKET':
+            self.eat('T_LBRACKET')
+            branches = []
+            branches.append(self.parse_routing())
+            while self.current_token and self.current_token.kind == 'T_COMMA':
+                self.eat('T_COMMA')
+                branches.append(self.parse_routing())
+            self.eat('T_RBRACKET', "Cierra el arreglo paralelo con ']'")
+            return SplitterNode(branches)
+
+        # 2. Validar Atomo
+        valid_atoms = ['T_INPUT', 'T_OUTPUT', 'T_BUILTIN_MOD', 'T_USER_FUN', 'T_VAR_ID', 'T_MONITOR', 'T_STRING', 'T_NUMBER']
+        
+        if token.kind in valid_atoms:
+            # 💡 PREDICCIÓN ESTRUCTURAL DE PUERTOS (INPU / OUTPU)
+            # Solución aplicada: ahora buscamos en T_VAR_ID y T_USER_FUN
+            if token.kind in ['T_VAR_ID', 'T_USER_FUN']:
+                matches = difflib.get_close_matches(token.value.upper(), ['INPUT', 'OUTPUT'], n=1, cutoff=0.75)
+                if matches:
+                    puerto = matches[0]
+                    self.report_error(f"Puerto sospechoso '{token.value}'.", f"¿Quisiste escribir '{puerto}'?")
+                    # Magia: Corregimos el token en la memoria y lo dejamos pasar
+                    token.kind = f'T_{puerto}'
+                    token.value = puerto
+            
+            self.advance()
+            if self.current_token and self.current_token.kind == 'T_LPAREN':
+                return self.parse_module_call(token)
+            return AtomicNode(token)
+        
+        self.report_error("Elemento de audio irreconocible.", "Usa INPUT, OUTPUT, Módulos o Variables.")
+        self.advance()
+        return AtomicNode(self.DummyToken(token.value))
+
+    def parse_routing(self):
+        left = self.parse_atom()
+        if self.current_token and self.current_token.kind == 'T_ARROW':
+            op = self.current_token
+            self.advance()
+            right = self.parse_routing()
+            return AudioRouteNode(left, op, right)
+        return left
+
+    def parse_function_decl(self):
+        self.eat('T_FUNCTION')
+        name_token = self.eat('T_USER_FUN', "La función debe iniciar con Mayúscula.")
+        self.eat('T_LPAREN', "Faltan paréntesis '(' para los parámetros.")
+        
+        params = []
+        if self.current_token and self.current_token.kind == 'T_VAR_ID':
+            params.append(self.eat('T_VAR_ID').value)
+            while self.current_token and self.current_token.kind == 'T_COMMA':
+                self.eat('T_COMMA')
+                params.append(self.eat('T_VAR_ID').value)
+                
+        self.eat('T_RPAREN', "Cierra los parámetros con ')'")
+        self.eat('T_LBRACE', "Abre el cuerpo de la función con '{'")
+        
+        body_statements = []
+        while self.current_token and self.current_token.kind != 'T_RBRACE' and self.current_token.kind != 'T_EOF':
+            body_statements.append(self.parse_statement())
+            
+        self.eat('T_RBRACE', "Cierra el cuerpo de la función con '}'")
+        return FunctionDeclNode(name_token, params, body_statements)
+
+    def parse_ui_layout(self):
+        self.eat('T_LAYOUT')
+        self.eat('T_LBRACE', "Abre el bloque de UI con '{'")
+        widgets = []
+        
+        ui_tokens = ['T_KNOB', 'T_SWITCH', 'T_SLIDER', 'T_LABEL']
+        while self.current_token and self.current_token.kind != 'T_RBRACE' and self.current_token.kind != 'T_EOF':
+            if self.current_token.kind in ui_tokens:
+                widget_token = self.current_token
+                self.advance()
+                widgets.append(self.parse_module_call(widget_token))
+            else:
+                self.report_error("Elemento UI inválido.", "Usa knob, switch, slider o label.")
+                self.advance()
+                
+        self.eat('T_RBRACE', "Cierra el bloque de UI con '}'")
+        return UILayoutNode(widgets)
+
+    def parse_if_statement(self):
+        self.eat('T_IF')
+        self.eat('T_LPAREN', "La condición debe ir entre paréntesis '()'")
+        
+        left = self.parse_atom()
+        op_tokens = ['T_EE', 'T_GE', 'T_LE', 'T_NE', 'T_GT', 'T_LT']
+        if self.current_token and self.current_token.kind in op_tokens:
+            op = self.current_token
+            self.advance()
+            right = self.parse_atom()
+            condition = ConditionNode(left, op, right)
+        else:
+            self.report_error("Falta operador lógico.", "Usa ==, !=, >=, <=, >, <")
+            condition = ConditionNode(left, self.DummyToken("=="), self.DummyToken("error"))
+            self.advance()
+            
+        self.eat('T_RPAREN', "Cierra la condición con ')'")
+        self.eat('T_LBRACE', "Abre el bloque If con '{'")
+        
+        true_body = []
+        while self.current_token and self.current_token.kind != 'T_RBRACE' and self.current_token.kind != 'T_EOF':
+            true_body.append(self.parse_statement())
+        self.eat('T_RBRACE', "Cierra el bloque If con '}'")
+        
+        false_body = None
+        if self.current_token and self.current_token.kind == 'T_ELSE':
+            self.eat('T_ELSE')
+            self.eat('T_LBRACE', "Abre el bloque Else con '{'")
+            false_body = []
+            while self.current_token and self.current_token.kind != 'T_RBRACE' and self.current_token.kind != 'T_EOF':
+                false_body.append(self.parse_statement())
+            self.eat('T_RBRACE', "Cierra el bloque Else con '}'")
+            
+        return IfNode(condition, true_body, false_body)
+
+    def parse_statement(self):
+        token = self.current_token
+        if not token: return None
+        
+        try:
+            # 💡 PREDICCIÓN ESTRUCTURAL LL(1) PARA PALABRAS CLAVE
+            # Solución aplicada: ahora buscamos en T_VAR_ID y T_USER_FUN
+            if token.kind in ['T_VAR_ID', 'T_USER_FUN']:
+                # Miramos al futuro (lookahead)
+                next_token = self.tokens[self.pos + 1] if self.pos + 1 < len(self.tokens) else None
+                
+                # Si una supuesta "variable" va seguida de otra variable, un paréntesis o una llave 
+                # (ej: `retur entrada`, `fuction MiEfecto(...)`, `u_layout {`), es un claro error tipográfico
+                if next_token and next_token.kind in ['T_VAR_ID', 'T_USER_FUN', 'T_LPAREN', 'T_LBRACE']:
+                    keywords = {'return': 'T_RETURN', 'function': 'T_FUNCTION', 'ui_layout': 'T_LAYOUT', 'if': 'T_IF', 'else': 'T_ELSE'}
+                    matches = difflib.get_close_matches(token.value, keywords.keys(), n=1, cutoff=0.7)
+                    if matches:
+                        keyword = matches[0]
+                        self.report_error(f"Comando irreconocible '{token.value}'.", f"Por la estructura, ¿quisiste escribir '{keyword}'?")
+                        
+                        # Magia: Mutamos el token en tiempo real para salvar el AST
+                        token.kind = keywords[keyword]
+                        token.value = keyword
+            
+            # Ahora dejamos que el flujo normal se encargue (¡con el token ya arreglado!)
+            if token.kind == 'T_FUNCTION': return self.parse_function_decl()
+            if token.kind == 'T_LAYOUT': return self.parse_ui_layout()
+            if token.kind == 'T_IF': return self.parse_if_statement()
+            if token.kind == 'T_RETURN':
+                self.eat('T_RETURN')
+                return ReturnNode(self.parse_routing())
+                
+            next_token = self.tokens[self.pos + 1] if self.pos + 1 < len(self.tokens) else None
+            # Si es una asignación
+            if token.kind == 'T_VAR_ID' and next_token and next_token.kind == 'T_ASSIGN':
+                target_name = self.current_token.value
+                self.advance()
+                self.advance() # consume T_ASSIGN '='
+                value = self.parse_routing()
+                return AssignmentNode(target_name, value)
+                
+            # Si no es palabra clave ni asignación, DEBE ser una ruta válida (ej: INPU -> OUTPUT)
+            return self.parse_routing()
+            
+        except Exception as e:
+            self.errors.append(str(e))
+            self.synchronize()
+            return None
+
+    def parse(self):
+        """Punto de entrada principal para el análisis sintáctico"""
+        if not self.tokens or (len(self.tokens) == 1 and self.tokens[0].kind == 'T_EOF'):
+            return "Código vacío"
+        
+        statements = []
+        while self.current_token and self.current_token.kind != 'T_EOF':
+            stmt = self.parse_statement()
+            if stmt: statements.append(stmt)
+                
+        return ProgramNode(statements)
+</file>
+
+<file path="ui/main_window.py">
+import os
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, 
+                             QHBoxLayout, QSplitter, QTextEdit, 
+                             QListWidget, QLabel, QTreeView, QToolBar, 
+                             QFileDialog, QStyle, QTabWidget)
+from PyQt6.QtCore import Qt, QDir, QSize, QRect
+from PyQt6.QtGui import QFont, QAction, QIcon, QFileSystemModel, QPainter, QColor
+from core.lexer import LexerBYPASS
+from ui.highlighter import BypassHighlighter
+
+# --- ÁREA DE NÚMEROS DE LÍNEA ---
+class LineNumberArea(QWidget):
+    def __init__(self, editor):
+        super().__init__(editor)
+        self.code_editor = editor
+    def sizeHint(self):
+        return QSize(self.code_editor.line_number_area_width(), 0)
+    def paintEvent(self, event):
+        self.code_editor.lineNumberAreaPaintEvent(event)
+
+# --- EDITOR DE CÓDIGO ---
+class CodeEditor(QTextEdit):
+    def __init__(self):
+        super().__init__()
+        self.line_number_area = LineNumberArea(self)
+        self.setFont(QFont("Consolas", 12))
+        self.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap)
+        self.document().blockCountChanged.connect(self.update_line_number_area_width)
+        self.verticalScrollBar().valueChanged.connect(self.line_number_area.update)
+        self.textChanged.connect(self.line_number_area.update)
+        self.cursorPositionChanged.connect(self.line_number_area.update)
+        self.update_line_number_area_width()
+
+    def line_number_area_width(self):
+        digits = len(str(max(1, self.document().blockCount())))
+        space = 15 + self.fontMetrics().horizontalAdvance('9') * digits
+        return space
+
+    def update_line_number_area_width(self):
+        self.setViewportMargins(self.line_number_area_width(), 0, 0, 0)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        cr = self.contentsRect()
+        self.line_number_area.setGeometry(QRect(cr.left(), cr.top(), self.line_number_area_width(), cr.height()))
+
+    def lineNumberAreaPaintEvent(self, event):
+        painter = QPainter(self.line_number_area)
+        painter.fillRect(event.rect(), QColor("#1e1e1e"))
+        block = self.document().begin()
+        block_number = block.blockNumber()
+        top = int(self.document().documentLayout().blockBoundingRect(block).top())
+        bottom = top + int(self.document().documentLayout().blockBoundingRect(block).height())
+        offset = self.verticalScrollBar().value()
+        while block.isValid():
+            visible_top = top - offset
+            if visible_top >= event.rect().bottom(): break
+            if block.isVisible() and visible_top >= event.rect().top():
+                number = str(block_number + 1)
+                painter.setPen(QColor("#75715E"))
+                painter.drawText(0, visible_top, self.line_number_area.width() - 5, 
+                                 self.fontMetrics().height(), Qt.AlignmentFlag.AlignRight, number)
+            block = block.next()
+            top = bottom
+            bottom = top + int(self.document().documentLayout().blockBoundingRect(block).height())
+            block_number += 1
+
+# --- VENTANA PRINCIPAL DEL IDE ---
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("BYPASS IDE v0.1")
+        self.resize(1000, 650)
+        self.current_file = None
+
+        # 1. Crear Toolbar primero para tener las referencias a las acciones
+        self.create_toolbar()
+
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(5, 5, 5, 5)
+
+        self.main_h_splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # 2. Explorador de Archivos (Izquierda)
+        self.file_model = QFileSystemModel()
+        self.file_model.setRootPath(QDir.currentPath())
+        self.file_tree = QTreeView()
+        self.file_tree.setModel(self.file_model)
+        self.file_tree.setRootIndex(self.file_model.index(QDir.currentPath()))
+        for i in range(1, 4): self.file_tree.hideColumn(i)
+        self.file_tree.setHeaderHidden(True)
+        self.file_tree.doubleClicked.connect(self.open_file_from_tree)
+        
+        exp_container = QWidget()
+        exp_layout = QVBoxLayout(exp_container)
+        exp_layout.addWidget(QLabel("EXPLORER"))
+        exp_layout.addWidget(self.file_tree)
+
+        # 3. Panel Central con Pestañas RAD (Source, Design, Debug)
+        self.center_tabs = QTabWidget()
+        self.center_tabs.setTabPosition(QTabWidget.TabPosition.South)
+
+        # Pestaña Source
+        self.code_editor = CodeEditor()
+        self.highlighter = BypassHighlighter(self.code_editor.document())
+        self.code_editor.textChanged.connect(self.run_compiler_pipeline)
+        self.center_tabs.addTab(self.code_editor, "Source")
+
+        # Pestaña Design
+        self.gui_preview = QWidget()
+        self.gui_preview.setStyleSheet("background-color: #252525;")
+        design_layout = QVBoxLayout(self.gui_preview)
+        design_layout.addWidget(QLabel("GUI DESIGN PREVIEW"), alignment=Qt.AlignmentFlag.AlignCenter)
+        self.center_tabs.addTab(self.gui_preview, "Design")
+
+        # Pestaña Debug (Monitoreo)
+        self.debug_panel = QWidget()
+        self.debug_panel.setStyleSheet("background-color: #121212;")
+        debug_layout = QVBoxLayout(self.debug_panel)
+        self.scope_area = QWidget()
+        self.spectrum_area = QWidget()
+        debug_layout.addWidget(QLabel("OSCILLOSCOPE / SPECTRUM ANALYZER"))
+        debug_layout.addWidget(self.scope_area)
+        debug_layout.addWidget(self.spectrum_area)
+        self.center_tabs.addTab(self.debug_panel, "Debug & Test")
+
+        # 4. Panel de Análisis (Derecha)
+        self.analysis_tabs = QTabWidget()
+        self.token_list = QListWidget()
+        self.ast_view = QListWidget()
+        self.symbol_table = QListWidget()
+        self.analysis_tabs.addTab(self.token_list, "Lexer")
+        self.analysis_tabs.addTab(self.ast_view, "Parser")
+        self.analysis_tabs.addTab(self.symbol_table, "Semantics")
+
+        analysis_container = QWidget()
+        analysis_layout = QVBoxLayout(analysis_container)
+        analysis_layout.addWidget(QLabel("COMPILER OUTPUT"))
+        analysis_layout.addWidget(self.analysis_tabs)
+
+        self.main_h_splitter.addWidget(exp_container)
+        self.main_h_splitter.addWidget(QWidget()) # Contenedor para el centro
+        self.main_h_splitter.widget(1).setLayout(QVBoxLayout())
+        self.main_h_splitter.widget(1).layout().addWidget(QLabel("WORKSPACE"))
+        self.main_h_splitter.widget(1).layout().addWidget(self.center_tabs)
+        self.main_h_splitter.addWidget(analysis_container)
+        self.main_h_splitter.setSizes([200, 800, 400])
+
+        # 5. Consola Inferior (Errores)
+        self.main_v_splitter = QSplitter(Qt.Orientation.Vertical)
+        self.main_v_splitter.addWidget(self.main_h_splitter)
+        err_container = QWidget()
+        err_layout = QVBoxLayout(err_container)
+        err_layout.addWidget(QLabel("ERRORS & LOGS"))
+        self.error_console = QListWidget()
+        err_layout.addWidget(self.error_console)
+        self.main_v_splitter.addWidget(err_container)
+        self.main_v_splitter.setSizes([700, 150])
+
+        main_layout.addWidget(self.main_v_splitter)
+        self.apply_styles()
+        self.statusBar().showMessage("BYPASS IDE Iniciado - Listo para codificar.")
+
+    def create_toolbar(self):
+        toolbar = QToolBar("Main Toolbar")
+        toolbar.setIconSize(QSize(20, 20))
+        self.addToolBar(toolbar)
+        style = self.style()
+        
+        # Archivos
+        toolbar.addAction(QAction(style.standardIcon(QStyle.StandardPixmap.SP_FileIcon), "Nuevo", self, triggered=self.new_file))
+        toolbar.addAction(QAction(style.standardIcon(QStyle.StandardPixmap.SP_DirIcon), "Carpeta", self, triggered=self.open_directory_dialog))
+        toolbar.addAction(QAction(style.standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton), "Guardar", self, triggered=self.save_file))
+        toolbar.addSeparator()
+
+        # Analizadores (Solo Texto)
+        self.parser_act = QAction("Parser", self)
+        self.parser_act.setCheckable(True)
+        self.parser_act.setChecked(True)
+        self.parser_act.triggered.connect(self.run_compiler_pipeline)
+        toolbar.addAction(self.parser_act)
+
+        self.sem_act = QAction("Semantics", self)
+        self.sem_act.setCheckable(True)
+        self.sem_act.setChecked(True)
+        self.sem_act.triggered.connect(self.run_compiler_pipeline)
+        toolbar.addAction(self.sem_act)
+        toolbar.addSeparator()
+
+        # Transporte y Test
+        self.load_audio_act = QAction(style.standardIcon(QStyle.StandardPixmap.SP_DriveDVDIcon), "Audio", self)
+        self.load_audio_act.triggered.connect(self.load_test_audio)
+        toolbar.addAction(self.load_audio_act)
+
+        self.play_act = QAction(style.standardIcon(QStyle.StandardPixmap.SP_MediaPlay), "Play", self)
+        self.play_act.triggered.connect(self.play_audio_test)
+        toolbar.addAction(self.play_act)
+
+        self.stop_act = QAction(style.standardIcon(QStyle.StandardPixmap.SP_MediaStop), "Stop", self)
+        self.stop_act.triggered.connect(self.stop_audio_test)
+        toolbar.addAction(self.stop_act)
+        toolbar.addSeparator()
+
+        toolbar.addAction(QAction(style.standardIcon(QStyle.StandardPixmap.SP_BrowserReload), "BUILD", self, triggered=self.compile_project))
+
+    def run_compiler_pipeline(self):
+        code = self.code_editor.toPlainText()
+        self.token_list.clear()
+        self.error_console.clear()
+        self.ast_view.clear()
+        self.symbol_table.clear()
+        
+        if not code.strip(): return
+        
+        # Lexer
+        lexer = LexerBYPASS(code)
+        tokens, errores = lexer.tokenize()
+        for t in tokens: self.token_list.addItem(str(t))
+        for err in errores: self.error_console.addItem(err)
+
+        # --- FASE 2: PARSER ---
+        if self.parser_act.isChecked():
+            from core.parser import ParserBYPASS
+            parser = ParserBYPASS(tokens)
+            ast_result = parser.parse()
+            
+            self.ast_view.addItem("AST GENERADO:")
+            self.ast_view.addItem(str(ast_result))
+            
+            # --- NUEVO: Imprimir errores sintácticos en la consola inferior ---
+            for err in parser.errors:
+                self.error_console.addItem(err)
+        else:
+            self.ast_view.addItem("Parser: [DESACTIVADO]")
+
+        # --- FASE 3: SEMÁNTICA (TABLA DE SÍMBOLOS) ---
+        if self.sem_act.isChecked() and not isinstance(ast_result, str):
+            from core.semantics import SemanticAnalyzer
+            analyzer = SemanticAnalyzer()
+            symbol_table, sem_errors = analyzer.analyze(ast_result)
+            
+            self.symbol_table.addItem("--- TABLA DE SÍMBOLOS ---")
+            for sym in symbol_table:
+                self.symbol_table.addItem(str(sym))
+                
+            for err in sem_errors:
+                self.error_console.addItem(err)
+        else:
+            self.symbol_table.addItem("Semantics: [DESACTIVADO o AST Inválido]")
+
+    # Métodos de Soporte
+    def open_file_from_tree(self, index):
+        path = self.file_model.filePath(index)
+        if os.path.isfile(path): self.load_file(path)
+
+# Métodos de Soporte
+    def open_file_from_tree(self, index):
+        path = self.file_model.filePath(index)
+        if os.path.isfile(path): self.load_file(path)
+
+    def load_file(self, path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                self.code_editor.setPlainText(f.read())
+            self.current_file = path
+            nombre_archivo = os.path.basename(path)
+            self.setWindowTitle(f"BYPASS IDE v0.1 - {nombre_archivo}")
+            
+            # --- FEEDBACK VISUAL ---
+            self.statusBar().showMessage(f"Archivo cargado: {nombre_archivo}", 3000) # 3000ms = 3 segundos
+            self.error_console.addItem(f"📁 [INFO] Archivo cargado exitosamente: {path}")
+            
+        except Exception as e: 
+            self.error_console.addItem(f"❌ [ERROR] Fallo al cargar: {str(e)}")
+
+    def new_file(self):
+        self.code_editor.clear()
+        self.current_file = None
+        self.setWindowTitle("BYPASS IDE v0.1 - Nuevo")
+        
+        # --- FEEDBACK VISUAL ---
+        self.statusBar().showMessage("Nuevo archivo creado.", 3000)
+        self.error_console.addItem("✨ [INFO] Nuevo proyecto inicializado.")
+
+    def save_file(self):
+        if not self.current_file:
+            path, _ = QFileDialog.getSaveFileName(self, "Guardar", "", "BYPASS (*.bps)")
+            if not path: return
+            self.current_file = path
+        try:
+            with open(self.current_file, 'w', encoding='utf-8') as f:
+                f.write(self.code_editor.toPlainText())
+            
+            # Actualizamos el título por si es la primera vez que se guarda ("Guardar como...")
+            nombre_archivo = os.path.basename(self.current_file)
+            self.setWindowTitle(f"BYPASS IDE v0.1 - {nombre_archivo}")
+            
+            # --- FEEDBACK VISUAL ---
+            self.statusBar().showMessage(f"Guardado: {nombre_archivo}", 3000)
+            self.error_console.addItem(f"💾 [INFO] Proyecto guardado: {self.current_file}")
+            
+        except Exception as e: 
+            self.error_console.addItem(f"❌ [ERROR] Fallo al guardar: {str(e)}")
+        if not self.current_file:
+            path, _ = QFileDialog.getSaveFileName(self, "Guardar", "", "BYPASS (*.bps)")
+            if not path: return
+            self.current_file = path
+        try:
+            with open(self.current_file, 'w', encoding='utf-8') as f:
+                f.write(self.code_editor.toPlainText())
+        except Exception as e: self.error_console.addItem(str(e))
+
+    def open_directory_dialog(self):
+        path = QFileDialog.getExistingDirectory(self, "Seleccionar Carpeta")
+        if path:
+            self.file_model.setRootPath(path)
+            self.file_tree.setRootIndex(self.file_model.index(path))
+
+    def load_test_audio(self): self.error_console.addItem("Cargando archivo .wav...")
+    def play_audio_test(self): self.center_tabs.setCurrentIndex(2)
+    def stop_audio_test(self): self.error_console.addItem("Stop.")
+    def compile_project(self): self.error_console.addItem("Generando Binarios...")
+
+    def apply_styles(self):
+        self.setStyleSheet("""
+            QMainWindow { background-color: #121212; }
+            QToolBar { background-color: #1e1e1e; border-bottom: 1px solid #333; spacing: 10px; padding: 5px; }
+            QToolBar QToolButton { color: #888; font-weight: bold; font-size: 11px; padding: 4px 8px; }
+            QToolBar QToolButton:checked { color: #66D9EF; background-color: #252525; border-radius: 4px; }
+            QSplitter::handle { background-color: #333; }
+            QLabel { color: #E6DB74; font-weight: bold; font-size: 10px; padding: 2px 5px; }
+            
+            QTabWidget::pane { border: 1px solid #333; background: #1e1e1e; }
+            QTabBar::tab { background: #252525; color: #888; padding: 8px 15px; border: 1px solid #333; }
+            QTabBar::tab:selected { background: #1e1e1e; color: #66D9EF; border-bottom: 2px solid #66D9EF; }
+            
+            QTextEdit, QListWidget, QTreeView { background-color: #1e1e1e; color: #fff; border: 1px solid #333; }
+            QListWidget { color: #A6E22E; font-family: 'Consolas'; font-size: 11px; }
+        """)
+
+if __name__ == "__main__":
+    import sys
+    from PyQt6.QtWidgets import QApplication
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
+</file>
+
+</files>

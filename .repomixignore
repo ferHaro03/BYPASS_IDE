@@ -1,0 +1,33 @@
+# ==========================================
+# REPOMIX IGNORE - PERFIL PYTHON / BYPASS
+# ==========================================
+
+# 1. Entornos Virtuales (¡CRÍTICO IGNORAR ESTO!)
+venv/
+env/
+.env
+.venv/
+
+# 2. Caché y compilados de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# 3. Multimedia y assets gráficos de la UI
+assets/
+*.png
+*.jpg
+*.ico
+*.svg
+
+# 4. Archivos de Git y configuración del IDE
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# 5. Ejemplos y pruebas (Opcional: Descomenta si solo quieres compartir el motor del compilador)
+# examples/*.bps
+# tests/
