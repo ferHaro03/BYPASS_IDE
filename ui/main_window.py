@@ -206,6 +206,8 @@ class MainWindow(QMainWindow):
         toolbar.addAction(QAction(style.standardIcon(QStyle.StandardPixmap.SP_BrowserReload), "BUILD", self, triggered=self.compile_project))
 
     def run_compiler_pipeline(self):
+        import re # Importamos expresiones regulares para buscar los números de línea
+        
         code = self.code_editor.toPlainText()
         self.token_list.clear()
         self.error_console.clear()
@@ -214,11 +216,19 @@ class MainWindow(QMainWindow):
         
         if not code.strip(): return
         
-        # Lexer
+        # --- FASE 1: LEXER ---
         lexer = LexerBYPASS(code)
         tokens, errores = lexer.tokenize()
         for t in tokens: self.token_list.addItem(str(t))
-        for err in errores: self.error_console.addItem(err)
+        
+        # Rastrear en qué líneas hubo errores léxicos
+        lexer_error_lines = set()
+        for err in errores:
+            self.error_console.addItem(err)
+            # Buscamos el texto "línea X" en el mensaje de error
+            match = re.search(r'línea (\d+)', err)
+            if match:
+                lexer_error_lines.add(match.group(1))
 
         # --- FASE 2: PARSER ---
         if self.parser_act.isChecked():
@@ -229,8 +239,12 @@ class MainWindow(QMainWindow):
             self.ast_view.addItem("AST GENERADO:")
             self.ast_view.addItem(str(ast_result))
             
-            # --- NUEVO: Imprimir errores sintácticos en la consola inferior ---
+            # Imprimir errores sintácticos (Filtrando cascadas)
             for err in parser.errors:
+                match = re.search(r'Línea (\d+)', err)
+                # Si la línea ya tiene un error léxico reportado, silenciamos al parser
+                if match and match.group(1) in lexer_error_lines:
+                    continue 
                 self.error_console.addItem(err)
         else:
             self.ast_view.addItem("Parser: [DESACTIVADO]")

@@ -146,38 +146,59 @@ class ParserBYPASS:
     def parse_module_call(self, module_token):
         self.eat('T_LPAREN', "Los módulos deben llevar paréntesis, ej: Filter(cutoff: 500hz)")
         params = []
+        
         while self.current_token and self.current_token.kind != 'T_RPAREN' and self.current_token.kind != 'T_EOF':
-            
-            param_name = "desconocido"
-            if self.current_token.kind in ['T_VAR_ID', 'T_LABEL']:
-                param_name = self.current_token.value
-                self.advance()
-            else:
-                self.report_error("Falta nombre de parámetro.", f"Usa el formato 'nombre_parametro: {self.current_token.value}'")
-                self.advance()
-            
-            self.eat('T_COLON', "Separa el parámetro de su valor con dos puntos ':'")
-
-            if self.current_token and self.current_token.kind in ['T_NUMBER', 'T_STRING', 'T_VAR_ID', 'T_BUILTIN_MOD', 'T_USER_FUN']:
-                param_value = self.current_token.value
-                self.advance()
+            try:
+                # 1. Nombre del parámetro
+                param_name = "desconocido"
+                if self.current_token.kind in ['T_VAR_ID', 'T_LABEL']:
+                    param_name = self.current_token.value
+                    self.advance()
+                else:
+                    raise ValueError(f"Nombre de parámetro inválido cerca de '{self.current_token.value}'.")
                 
-                if self.current_token and self.current_token.kind == 'T_DOT':
-                    self.eat('T_DOT')
-                    if self.current_token.kind == 'T_VAR_ID':
-                        prop = self.current_token.value
-                        param_value = f"{param_value}.{prop}"
-                        self.advance()
-                params.append((param_name, param_value))
-            else:
-                self.report_error("Valor inválido.", "Usa números, variables o strings.")
-                self.advance()
+                # 2. Dos puntos (Validación silenciosa sin usar eat)
+                if self.current_token.kind == 'T_COLON':
+                    self.advance()
+                else:
+                    raise ValueError(f"Faltan los dos puntos ':' después de '{param_name}'.")
+                    
+                # 3. Valor del parámetro
+                if self.current_token.kind in ['T_NUMBER', 'T_STRING', 'T_VAR_ID', 'T_BUILTIN_MOD', 'T_USER_FUN']:
+                    param_value = self.current_token.value
+                    self.advance()
+                    
+                    # Soporte para propiedades compuestas (ej. Mixer.wet)
+                    if self.current_token and self.current_token.kind == 'T_DOT':
+                        self.advance() 
+                        if self.current_token.kind == 'T_VAR_ID':
+                            prop = self.current_token.value
+                            param_value = f"{param_value}.{prop}"
+                            self.advance()
+                    
+                    params.append((param_name, param_value))
+                else:
+                    raise ValueError(f"Valor inválido asignado a '{param_name}'.")
+                    
+            except ValueError as e:
+                # REPORTE ÚNICO Y CONCRETO
+                self.report_error(str(e), "Usa el formato estricto: 'parametro: valor' (ej: gain: 0.85)")
                 
+                # SILENCIADOR DE RUIDO (Recuperación Localizada)
+                # Descartamos toda la "basura" léxica hasta encontrar terreno seguro
+                while self.current_token and self.current_token.kind not in ['T_COMMA', 'T_RPAREN', 'T_EOF']:
+                    self.advance()
+            
+            # --- Manejo del separador (coma) ---
             if self.current_token and self.current_token.kind == 'T_COMMA':
-                self.eat('T_COMMA')
+                self.advance()
             elif self.current_token and self.current_token.kind != 'T_RPAREN':
-                 self.report_error("Falta coma.", "Separa múltiples parámetros con comas ','")
-                 self.advance()
+                self.report_error("Falta separación", "Usa una coma ',' entre cada parámetro.")
+                # Sincronización en caso de falta de coma
+                while self.current_token and self.current_token.kind not in ['T_COMMA', 'T_RPAREN', 'T_EOF']:
+                    self.advance()
+                if self.current_token and self.current_token.kind == 'T_COMMA':
+                    self.advance()
                 
         self.eat('T_RPAREN', "Cierra los parámetros con ')'")
         return ModuleCallNode(module_token, params)
