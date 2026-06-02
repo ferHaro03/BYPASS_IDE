@@ -126,7 +126,7 @@ class LexerBYPASS:
                 context_word = self.source_code[word_start:word_end]
                 
                 # 4. Construir el mensaje de error condicional
-                err_msg = f"❌ Error Léxico: Carácter ilegal '{value}' en línea {self.line}, col {column}."
+                err_msg = f"❌ Error: Carácter ilegal '{value}' en línea {self.line}, col {column}."
                 
                 # Si la longitud es mayor a 1, significa que no estaba aislado
                 if len(context_word) > 1:
