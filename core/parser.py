@@ -1,4 +1,5 @@
 import difflib
+from core.errors import SyntaxError
 
 # ==========================================
 # 🌳 NODOS DEL ÁRBOL DE SINTAXIS ABSTRACTA
@@ -93,7 +94,6 @@ class IfNode(ASTNode):
             res += f" Else {{\n  {f_str}\n}}"
         return res
 
-
 # ==========================================
 # ⚙️ ANALIZADOR SINTÁCTICO (PARSER)
 # ==========================================
@@ -109,16 +109,14 @@ class ParserBYPASS:
         self.pos += 1
         self.current_token = self.tokens[self.pos] if self.pos < len(self.tokens) else None
 
-    # --- RECUPERACIÓN INTELIGENTE DE ERRORES ---
+    # --- TIPADO FUERTE DE ERRORES SINTÁCTICOS ---
     def report_error(self, message, suggestion):
-        """Registra el error con contexto y sugerencia sin detener el IDE"""
-        linea = self.current_token.line if self.current_token else "EOF"
-        token_val = self.current_token.value if self.current_token else "Fin de archivo"
-        error_completo = f"❌ Línea {linea} | Error cerca de '{token_val}': {message}\n   💡 Sugerencia: {suggestion}"
-        self.errors.append(error_completo)
+        line = self.current_token.line if self.current_token else "EOF"
+        col = self.current_token.column if self.current_token else "EOF"
+        error_obj = SyntaxError(line, col, message, suggestion)
+        self.errors.append(error_obj)
 
     def synchronize(self):
-        """Avanza hasta un punto seguro para seguir leyendo si el error es grave"""
         self.advance()
         while self.current_token and self.current_token.kind != 'T_EOF':
             if self.current_token.kind in ['T_FUNCTION', 'T_IF', 'T_LAYOUT', 'T_INPUT', 'T_VAR_ID']:
@@ -126,20 +124,27 @@ class ParserBYPASS:
             self.advance()
 
     class DummyToken:
-        """Token falso para que el AST no explote si falta una variable o símbolo"""
         def __init__(self, value="ERROR"):
             self.value = value
             self.kind = "T_ERROR"
 
     def eat(self, token_kind, suggestion="Revisa la sintaxis de BYPASS."):
-        """Consume el token si coincide, si no, reporta inteligentemente y salva el AST"""
         if self.current_token and self.current_token.kind == token_kind:
             token = self.current_token
             self.advance()
             return token
         else:
             kind_actual = self.current_token.kind if self.current_token else "EOF"
-            self.report_error(f"Se esperaba {token_kind} pero se encontró {kind_actual}", suggestion)
+            
+            # TRAMPA PARA ESTRUCTURAS HUÉRFANAS (EOF sin cerrar llaves)
+            if kind_actual == 'T_EOF' and token_kind in ['T_RBRACE', 'T_RBRACKET', 'T_RPAREN']:
+                self.report_error(
+                    f"Bloque sin cerrar. Se esperaba '{token_kind}' antes del fin de archivo.", 
+                    "Revisa si olvidaste cerrar una llave '}', corchete ']' o paréntesis ')' en el bloque anterior."
+                )
+            else:
+                self.report_error(f"Se esperaba {token_kind} pero se encontró {kind_actual}.", suggestion)
+                
             return self.DummyToken()
 
     # --- MÉTODOS DE LECTURA GRAMATICAL ---
@@ -149,7 +154,10 @@ class ParserBYPASS:
         
         while self.current_token and self.current_token.kind != 'T_RPAREN' and self.current_token.kind != 'T_EOF':
             try:
-                # 1. Nombre del parámetro
+                # VALIDACIÓN DEL CABALLO DE TROYA (Comillas sin cerrar en parámetros)
+                if self.current_token.kind == 'T_UNCLOSED_STRING':
+                    raise ValueError("Se esperaba '\"' para cerrar la cadena de texto.")
+
                 param_name = "desconocido"
                 if self.current_token.kind in ['T_VAR_ID', 'T_LABEL']:
                     param_name = self.current_token.value
@@ -157,18 +165,19 @@ class ParserBYPASS:
                 else:
                     raise ValueError(f"Nombre de parámetro inválido cerca de '{self.current_token.value}'.")
                 
-                # 2. Dos puntos (Validación silenciosa sin usar eat)
                 if self.current_token.kind == 'T_COLON':
                     self.advance()
                 else:
                     raise ValueError(f"Faltan los dos puntos ':' después de '{param_name}'.")
                     
-                # 3. Valor del parámetro
+                # VALIDACIÓN DEL CABALLO DE TROYA EN EL VALOR
+                if self.current_token.kind == 'T_UNCLOSED_STRING':
+                    raise ValueError("Se esperaba '\"' para cerrar la cadena de texto.")
+
                 if self.current_token.kind in ['T_NUMBER', 'T_STRING', 'T_VAR_ID', 'T_BUILTIN_MOD', 'T_USER_FUN']:
                     param_value = self.current_token.value
                     self.advance()
                     
-                    # Soporte para propiedades compuestas (ej. Mixer.wet)
                     if self.current_token and self.current_token.kind == 'T_DOT':
                         self.advance() 
                         if self.current_token.kind == 'T_VAR_ID':
@@ -181,20 +190,14 @@ class ParserBYPASS:
                     raise ValueError(f"Valor inválido asignado a '{param_name}'.")
                     
             except ValueError as e:
-                # REPORTE ÚNICO Y CONCRETO
-                self.report_error(str(e), "Usa el formato estricto: 'parametro: valor' (ej: gain: 0.85)")
-                
-                # SILENCIADOR DE RUIDO (Recuperación Localizada)
-                # Descartamos toda la "basura" léxica hasta encontrar terreno seguro
+                self.report_error(str(e), "Asegúrate de cerrar comillas y usar el formato 'parametro: valor'")
                 while self.current_token and self.current_token.kind not in ['T_COMMA', 'T_RPAREN', 'T_EOF']:
                     self.advance()
             
-            # --- Manejo del separador (coma) ---
             if self.current_token and self.current_token.kind == 'T_COMMA':
                 self.advance()
             elif self.current_token and self.current_token.kind != 'T_RPAREN':
                 self.report_error("Falta separación", "Usa una coma ',' entre cada parámetro.")
-                # Sincronización en caso de falta de coma
                 while self.current_token and self.current_token.kind not in ['T_COMMA', 'T_RPAREN', 'T_EOF']:
                     self.advance()
                 if self.current_token and self.current_token.kind == 'T_COMMA':
@@ -207,7 +210,12 @@ class ParserBYPASS:
         token = self.current_token
         if not token: return AtomicNode(self.DummyToken("None"))
         
-        # 1. ¿Es un Splitter?
+        # VALIDACIÓN DEL CABALLO DE TROYA GLOBAL
+        if token.kind == 'T_UNCLOSED_STRING':
+            self.report_error("Se esperaba '\"' para cerrar la cadena de texto.", "Añade la comilla final a la cadena.")
+            self.advance()
+            return AtomicNode(self.DummyToken("ErrorString"))
+
         if token.kind == 'T_LBRACKET':
             self.eat('T_LBRACKET')
             branches = []
@@ -218,18 +226,14 @@ class ParserBYPASS:
             self.eat('T_RBRACKET', "Cierra el arreglo paralelo con ']'")
             return SplitterNode(branches)
 
-        # 2. Validar Atomo
         valid_atoms = ['T_INPUT', 'T_OUTPUT', 'T_BUILTIN_MOD', 'T_USER_FUN', 'T_VAR_ID', 'T_MONITOR', 'T_STRING', 'T_NUMBER']
         
         if token.kind in valid_atoms:
-            # 💡 PREDICCIÓN ESTRUCTURAL DE PUERTOS (INPU / OUTPU)
-            # Solución aplicada: ahora buscamos en T_VAR_ID y T_USER_FUN
             if token.kind in ['T_VAR_ID', 'T_USER_FUN']:
                 matches = difflib.get_close_matches(token.value.upper(), ['INPUT', 'OUTPUT'], n=1, cutoff=0.75)
                 if matches:
                     puerto = matches[0]
                     self.report_error(f"Puerto sospechoso '{token.value}'.", f"¿Quisiste escribir '{puerto}'?")
-                    # Magia: Corregimos el token en la memoria y lo dejamos pasar
                     token.kind = f'T_{puerto}'
                     token.value = puerto
             
@@ -238,7 +242,7 @@ class ParserBYPASS:
                 return self.parse_module_call(token)
             return AtomicNode(token)
         
-        self.report_error("Elemento de audio irreconocible.", "Usa INPUT, OUTPUT, Módulos o Variables.")
+        self.report_error("Elemento irreconocible.", "Usa INPUT, OUTPUT, Módulos o Variables.")
         self.advance()
         return AtomicNode(self.DummyToken(token.value))
 
@@ -331,26 +335,23 @@ class ParserBYPASS:
         if not token: return None
         
         try:
-            # 💡 PREDICCIÓN ESTRUCTURAL LL(1) PARA PALABRAS CLAVE
-            # Solución aplicada: ahora buscamos en T_VAR_ID y T_USER_FUN
+            # VALIDACIÓN DEL CABALLO DE TROYA GLOBAL
+            if token.kind == 'T_UNCLOSED_STRING':
+                self.report_error("Se esperaba '\"' para cerrar la cadena de texto.", "Añade la comilla final a la cadena.")
+                self.advance()
+                return None
+
             if token.kind in ['T_VAR_ID', 'T_USER_FUN']:
-                # Miramos al futuro (lookahead)
                 next_token = self.tokens[self.pos + 1] if self.pos + 1 < len(self.tokens) else None
-                
-                # Si una supuesta "variable" va seguida de otra variable, un paréntesis o una llave 
-                # (ej: `retur entrada`, `fuction MiEfecto(...)`, `u_layout {`), es un claro error tipográfico
                 if next_token and next_token.kind in ['T_VAR_ID', 'T_USER_FUN', 'T_LPAREN', 'T_LBRACE']:
                     keywords = {'return': 'T_RETURN', 'function': 'T_FUNCTION', 'ui_layout': 'T_LAYOUT', 'if': 'T_IF', 'else': 'T_ELSE'}
                     matches = difflib.get_close_matches(token.value, keywords.keys(), n=1, cutoff=0.7)
                     if matches:
                         keyword = matches[0]
                         self.report_error(f"Comando irreconocible '{token.value}'.", f"Por la estructura, ¿quisiste escribir '{keyword}'?")
-                        
-                        # Magia: Mutamos el token en tiempo real para salvar el AST
                         token.kind = keywords[keyword]
                         token.value = keyword
             
-            # Ahora dejamos que el flujo normal se encargue (¡con el token ya arreglado!)
             if token.kind == 'T_FUNCTION': return self.parse_function_decl()
             if token.kind == 'T_LAYOUT': return self.parse_ui_layout()
             if token.kind == 'T_IF': return self.parse_if_statement()
@@ -359,24 +360,21 @@ class ParserBYPASS:
                 return ReturnNode(self.parse_routing())
                 
             next_token = self.tokens[self.pos + 1] if self.pos + 1 < len(self.tokens) else None
-            # Si es una asignación
             if token.kind == 'T_VAR_ID' and next_token and next_token.kind == 'T_ASSIGN':
                 target_name = self.current_token.value
                 self.advance()
-                self.advance() # consume T_ASSIGN '='
+                self.advance() 
                 value = self.parse_routing()
                 return AssignmentNode(target_name, value)
                 
-            # Si no es palabra clave ni asignación, DEBE ser una ruta válida (ej: INPU -> OUTPUT)
             return self.parse_routing()
             
         except Exception as e:
-            self.errors.append(str(e))
+            self.report_error(str(e), "Verifica la sintaxis de esta sentencia.")
             self.synchronize()
             return None
 
     def parse(self):
-        """Punto de entrada principal para el análisis sintáctico"""
         if not self.tokens or (len(self.tokens) == 1 and self.tokens[0].kind == 'T_EOF'):
             return "Código vacío"
         

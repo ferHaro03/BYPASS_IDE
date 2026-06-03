@@ -7,6 +7,7 @@ from PyQt6.QtCore import Qt, QDir, QSize, QRect
 from PyQt6.QtGui import QFont, QAction, QIcon, QFileSystemModel, QPainter, QColor
 from core.lexer import LexerBYPASS
 from ui.highlighter import BypassHighlighter
+from core.errors import LexicalError, SyntaxError
 
 # --- ÁREA DE NÚMEROS DE LÍNEA ---
 class LineNumberArea(QWidget):
@@ -70,10 +71,10 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("BYPASS IDE v0.1")
+        self.setWindowIcon(QIcon("assets/bypass_logo.png"))
         self.resize(1000, 650)
         self.current_file = None
 
-        # 1. Crear Toolbar primero para tener las referencias a las acciones
         self.create_toolbar()
 
         central_widget = QWidget()
@@ -83,7 +84,7 @@ class MainWindow(QMainWindow):
 
         self.main_h_splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # 2. Explorador de Archivos (Izquierda)
+        # Explorador
         self.file_model = QFileSystemModel()
         self.file_model.setRootPath(QDir.currentPath())
         self.file_tree = QTreeView()
@@ -98,24 +99,21 @@ class MainWindow(QMainWindow):
         exp_layout.addWidget(QLabel("EXPLORER"))
         exp_layout.addWidget(self.file_tree)
 
-        # 3. Panel Central con Pestañas RAD (Source, Design, Debug)
+        # Panel Central
         self.center_tabs = QTabWidget()
         self.center_tabs.setTabPosition(QTabWidget.TabPosition.South)
 
-        # Pestaña Source
         self.code_editor = CodeEditor()
         self.highlighter = BypassHighlighter(self.code_editor.document())
         self.code_editor.textChanged.connect(self.run_compiler_pipeline)
         self.center_tabs.addTab(self.code_editor, "Source")
 
-        # Pestaña Design
         self.gui_preview = QWidget()
         self.gui_preview.setStyleSheet("background-color: #252525;")
         design_layout = QVBoxLayout(self.gui_preview)
         design_layout.addWidget(QLabel("GUI DESIGN PREVIEW"), alignment=Qt.AlignmentFlag.AlignCenter)
         self.center_tabs.addTab(self.gui_preview, "Design")
 
-        # Pestaña Debug (Monitoreo)
         self.debug_panel = QWidget()
         self.debug_panel.setStyleSheet("background-color: #121212;")
         debug_layout = QVBoxLayout(self.debug_panel)
@@ -126,7 +124,7 @@ class MainWindow(QMainWindow):
         debug_layout.addWidget(self.spectrum_area)
         self.center_tabs.addTab(self.debug_panel, "Debug & Test")
 
-        # 4. Panel de Análisis (Derecha)
+        # Panel de Análisis
         self.analysis_tabs = QTabWidget()
         self.token_list = QListWidget()
         self.ast_view = QListWidget()
@@ -141,14 +139,14 @@ class MainWindow(QMainWindow):
         analysis_layout.addWidget(self.analysis_tabs)
 
         self.main_h_splitter.addWidget(exp_container)
-        self.main_h_splitter.addWidget(QWidget()) # Contenedor para el centro
+        self.main_h_splitter.addWidget(QWidget()) 
         self.main_h_splitter.widget(1).setLayout(QVBoxLayout())
         self.main_h_splitter.widget(1).layout().addWidget(QLabel("WORKSPACE"))
         self.main_h_splitter.widget(1).layout().addWidget(self.center_tabs)
         self.main_h_splitter.addWidget(analysis_container)
         self.main_h_splitter.setSizes([200, 800, 400])
 
-        # 5. Consola Inferior (Errores)
+        # Consola
         self.main_v_splitter = QSplitter(Qt.Orientation.Vertical)
         self.main_v_splitter.addWidget(self.main_h_splitter)
         err_container = QWidget()
@@ -169,13 +167,11 @@ class MainWindow(QMainWindow):
         self.addToolBar(toolbar)
         style = self.style()
         
-        # Archivos
         toolbar.addAction(QAction(style.standardIcon(QStyle.StandardPixmap.SP_FileIcon), "Nuevo", self, triggered=self.new_file))
         toolbar.addAction(QAction(style.standardIcon(QStyle.StandardPixmap.SP_DirIcon), "Carpeta", self, triggered=self.open_directory_dialog))
         toolbar.addAction(QAction(style.standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton), "Guardar", self, triggered=self.save_file))
         toolbar.addSeparator()
 
-        # Analizadores (Solo Texto)
         self.parser_act = QAction("Parser", self)
         self.parser_act.setCheckable(True)
         self.parser_act.setChecked(True)
@@ -189,7 +185,6 @@ class MainWindow(QMainWindow):
         toolbar.addAction(self.sem_act)
         toolbar.addSeparator()
 
-        # Transporte y Test
         self.load_audio_act = QAction(style.standardIcon(QStyle.StandardPixmap.SP_DriveDVDIcon), "Audio", self)
         self.load_audio_act.triggered.connect(self.load_test_audio)
         toolbar.addAction(self.load_audio_act)
@@ -206,8 +201,6 @@ class MainWindow(QMainWindow):
         toolbar.addAction(QAction(style.standardIcon(QStyle.StandardPixmap.SP_BrowserReload), "BUILD", self, triggered=self.compile_project))
 
     def run_compiler_pipeline(self):
-        import re # Importamos expresiones regulares para buscar los números de línea
-        
         code = self.code_editor.toPlainText()
         self.token_list.clear()
         self.error_console.clear()
@@ -221,14 +214,12 @@ class MainWindow(QMainWindow):
         tokens, errores = lexer.tokenize()
         for t in tokens: self.token_list.addItem(str(t))
         
-        # Rastrear en qué líneas hubo errores léxicos
+        # TIPADO FUERTE: Supresión de cascada basada en objetos
         lexer_error_lines = set()
         for err in errores:
-            self.error_console.addItem(err)
-            # Buscamos el texto "línea X" en el mensaje de error
-            match = re.search(r'línea (\d+)', err)
-            if match:
-                lexer_error_lines.add(match.group(1))
+            if isinstance(err, LexicalError):
+                lexer_error_lines.add(err.line)
+            self.error_console.addItem(str(err))
 
         # --- FASE 2: PARSER ---
         if self.parser_act.isChecked():
@@ -239,17 +230,15 @@ class MainWindow(QMainWindow):
             self.ast_view.addItem("AST GENERADO:")
             self.ast_view.addItem(str(ast_result))
             
-            # Imprimir errores sintácticos (Filtrando cascadas)
             for err in parser.errors:
-                match = re.search(r'Línea (\d+)', err)
-                # Si la línea ya tiene un error léxico reportado, silenciamos al parser
-                if match and match.group(1) in lexer_error_lines:
+                # Filtrado de supresión basado en la clase del error
+                if isinstance(err, SyntaxError) and err.line in lexer_error_lines:
                     continue 
-                self.error_console.addItem(err)
+                self.error_console.addItem(str(err))
         else:
             self.ast_view.addItem("Parser: [DESACTIVADO]")
 
-        # --- FASE 3: SEMÁNTICA (TABLA DE SÍMBOLOS) ---
+        # --- FASE 3: SEMÁNTICA ---
         if self.sem_act.isChecked() and not isinstance(ast_result, str):
             from core.semantics import SemanticAnalyzer
             analyzer = SemanticAnalyzer()
@@ -260,16 +249,10 @@ class MainWindow(QMainWindow):
                 self.symbol_table.addItem(str(sym))
                 
             for err in sem_errors:
-                self.error_console.addItem(err)
+                self.error_console.addItem(str(err))
         else:
             self.symbol_table.addItem("Semantics: [DESACTIVADO o AST Inválido]")
 
-    # Métodos de Soporte
-    def open_file_from_tree(self, index):
-        path = self.file_model.filePath(index)
-        if os.path.isfile(path): self.load_file(path)
-
-# Métodos de Soporte
     def open_file_from_tree(self, index):
         path = self.file_model.filePath(index)
         if os.path.isfile(path): self.load_file(path)
@@ -281,11 +264,8 @@ class MainWindow(QMainWindow):
             self.current_file = path
             nombre_archivo = os.path.basename(path)
             self.setWindowTitle(f"BYPASS IDE v0.1 - {nombre_archivo}")
-            
-            # --- FEEDBACK VISUAL ---
-            self.statusBar().showMessage(f"Archivo cargado: {nombre_archivo}", 3000) # 3000ms = 3 segundos
+            self.statusBar().showMessage(f"Archivo cargado: {nombre_archivo}", 3000) 
             self.error_console.addItem(f"📁 [INFO] Archivo cargado exitosamente: {path}")
-            
         except Exception as e: 
             self.error_console.addItem(f"❌ [ERROR] Fallo al cargar: {str(e)}")
 
@@ -293,8 +273,6 @@ class MainWindow(QMainWindow):
         self.code_editor.clear()
         self.current_file = None
         self.setWindowTitle("BYPASS IDE v0.1 - Nuevo")
-        
-        # --- FEEDBACK VISUAL ---
         self.statusBar().showMessage("Nuevo archivo creado.", 3000)
         self.error_console.addItem("✨ [INFO] Nuevo proyecto inicializado.")
 
@@ -306,25 +284,12 @@ class MainWindow(QMainWindow):
         try:
             with open(self.current_file, 'w', encoding='utf-8') as f:
                 f.write(self.code_editor.toPlainText())
-            
-            # Actualizamos el título por si es la primera vez que se guarda ("Guardar como...")
             nombre_archivo = os.path.basename(self.current_file)
             self.setWindowTitle(f"BYPASS IDE v0.1 - {nombre_archivo}")
-            
-            # --- FEEDBACK VISUAL ---
             self.statusBar().showMessage(f"Guardado: {nombre_archivo}", 3000)
             self.error_console.addItem(f"💾 [INFO] Proyecto guardado: {self.current_file}")
-            
         except Exception as e: 
             self.error_console.addItem(f"❌ [ERROR] Fallo al guardar: {str(e)}")
-        if not self.current_file:
-            path, _ = QFileDialog.getSaveFileName(self, "Guardar", "", "BYPASS (*.bps)")
-            if not path: return
-            self.current_file = path
-        try:
-            with open(self.current_file, 'w', encoding='utf-8') as f:
-                f.write(self.code_editor.toPlainText())
-        except Exception as e: self.error_console.addItem(str(e))
 
     def open_directory_dialog(self):
         path = QFileDialog.getExistingDirectory(self, "Seleccionar Carpeta")

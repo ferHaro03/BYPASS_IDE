@@ -1,4 +1,5 @@
 import re
+from core.errors import LexicalError
 
 class Token:
     def __init__(self, kind, value, line, column):
@@ -31,7 +32,6 @@ class LexerBYPASS:
             'switch':   'T_SWITCH',
             'slider':   'T_SLIDER',
             'label':    'T_LABEL',
-            # Tokens de Diagnóstico (Solo para el IDE)
             'monitor':     'T_MONITOR',
             'oscilloscope':'T_OSCILLO',
             'spectrum':    'T_SPECTRUM',
@@ -39,13 +39,13 @@ class LexerBYPASS:
             'OUTPUT':   'T_OUTPUT'
         }
 
-        # Módulos nativos (Colores Primarios)
+        # Módulos nativos
         self.BUILTIN_MODULES = [
-            'Gain', 'Fuzz', 'Gate',           # Dinámica
-            'Filter', 'EQ',                   # Espectro
-            'Delay', 'Reverb',                # Espacio
-            'LFO', 'Chorus',                  # Modulación
-            'Mixer'                           # Utilidad
+            'Gain', 'Fuzz', 'Gate',           
+            'Filter', 'EQ',                   
+            'Delay', 'Reverb',                
+            'LFO', 'Chorus',                  
+            'Mixer'                           
         ]
 
     def tokenize(self):
@@ -53,8 +53,9 @@ class LexerBYPASS:
             ('T_COMMENT',   r'#.*'),
             ('T_ARROW',     r'->'),
             ('T_NUMBER',    r'\d+(\.\d+)?(hz|ms|bpm|db|%)?'),
-            ('T_STRING',    r'"[^"]*"'),
-            ('T_ID',        r'[a-zA-Z_][a-zA-Z0-9_]*'), # Captura cualquier palabra
+            ('T_STRING',    r'"[^"\n]*"'),        # Cadena cerrada correctamente
+            ('T_UNCLOSED_STRING', r'"[^"\n]*'),   # CABALLO DE TROYA: Cadena sin cerrar
+            ('T_ID',        r'[a-zA-Z_][a-zA-Z0-9_]*'),
             ('T_NEWLINE',   r'\n'),
             ('T_SKIP',      r'[ \t]+'),
             ('T_EE',        r'=='),
@@ -95,7 +96,6 @@ class LexerBYPASS:
             elif kind == 'T_SKIP' or kind == 'T_COMMENT':
                 continue
             elif kind == 'T_ID':
-                # --- LÓGICA DE CLASIFICACIÓN REFINADA ---
                 if value in self.KEYWORDS:
                     kind = self.KEYWORDS[value]
                 elif value in self.BUILTIN_MODULES:
@@ -106,36 +106,37 @@ class LexerBYPASS:
                     kind = 'T_VAR_ID'
                 self.tokens.append(Token(kind, value, self.line, column))
                 
+            elif kind == 'T_UNCLOSED_STRING':
+                # Pasa directamente al Parser para ser juzgado como Error Sintáctico
+                self.tokens.append(Token(kind, value, self.line, column))
+                
             elif kind == 'T_MISMATCH':
-                # --- NUEVA LÓGICA: Extracción Inteligente de Contexto ---
                 start_idx = mo.start()
-                # Delimitadores que cortan una palabra en tu lenguaje
                 delimiters = " \t\n(),{}[];:->=+" 
                 
-                # 1. Retroceder para encontrar el inicio de la palabra rota
                 word_start = start_idx
                 while word_start > 0 and self.source_code[word_start - 1] not in delimiters:
                     word_start -= 1
                     
-                # 2. Avanzar para encontrar el final de la palabra rota
                 word_end = start_idx + 1
                 while word_end < len(self.source_code) and self.source_code[word_end] not in delimiters:
                     word_end += 1
                     
-                # 3. Extraer la cadena completa
                 context_word = self.source_code[word_start:word_end]
                 
-                # 4. Construir el mensaje de error condicional
-                err_msg = f"❌ Error: Carácter ilegal '{value}' en línea {self.line}, col {column}."
-                
-                # Si la longitud es mayor a 1, significa que no estaba aislado
                 if len(context_word) > 1:
-                    err_msg += f"\n   💡 Sugerencia: Revisa la cadena completa '{context_word}'."
+                    sug = f"Revisa la cadena completa '{context_word}'."
+                else:
+                    sug = "Elimina este carácter no reconocido en el lenguaje."
                     
-                self.errors.append(err_msg)
-                
-                # Mantenemos el "Camino A" purificando la entrada (no se añade a self.tokens)
-                # ---------------------------------------------------------
+                # TIPADO ESTRICTO: Instanciamos el objeto LexicalError
+                error_obj = LexicalError(
+                    line=self.line, 
+                    column=column, 
+                    message=f"Carácter ilegal '{value}'", 
+                    suggestion=sug
+                )
+                self.errors.append(error_obj)
             else:
                 self.tokens.append(Token(kind, value, self.line, column))
         

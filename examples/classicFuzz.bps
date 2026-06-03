@@ -9,7 +9,7 @@ function ClassicFuzz(senal) {
     filtro_tono = Filter(type: "BP", cutoff: 2500hz, q: 1.2)
     
     return senal -> distorsion_roja -> filtro_tono
-}
+
 
 # Procesamiento directo
-INPUT -> ClassicFuzz -> Gain(volume: 0.9) -> OUTPUT
+INPUT -> ClassicFuzz -> Ga&in(volume: 0.9) -> OUTPUT
